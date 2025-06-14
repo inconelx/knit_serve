@@ -283,35 +283,67 @@ def get_combobox_values():
         return jsonify({'error': str(e)}), 500
 
 
+def analyze_query_data(allowed_fields, data):
+    filters = data.get('filters', {})
+    date_range = data.get('date_range', {})
+    page = int(data.get('page', 1))
+    page_size = int(data.get('page_size', 10))
+    offset = (page - 1) * page_size
+
+    where_clauses = []
+    params = []
+
+    for field, value in filters.items():
+        if field in allowed_fields:
+            if isinstance(value, str) and '%' in value:
+                where_clauses.append(f"{field} LIKE %s")
+                params.append(value)
+            else:
+                where_clauses.append(f"{field} = %s")
+                params.append(value)
+
+    if 'beg_date' in date_range:
+        where_clauses.append(f"add_time >= %s")
+        params.append(date_range['beg_date'])
+
+    if 'end_date' in date_range:
+        where_clauses.append(f"add_time <= %s")
+        params.append(date_range['end_date'])
+
+    where_clauses.append(f"deleted = 0")
+
+    where_sql = " AND ".join(where_clauses)
+
+    if where_sql:
+        where_sql = "WHERE " + where_sql
+
+    params.extend([page_size, offset])
+
+    return where_sql, params, page, page_size
+
+def execute_query_sql(count_sql, query_sql, params):
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute(count_sql, params[:-2])  # 不要 LIMIT 参数
+    total = cursor.fetchone()['total']
+
+    cursor.execute(query_sql, params)
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return total, rows
+
 @app.route('/api/company/query', methods=['POST'])
 def query_company_with_pagination():
     try:
         data = request.get_json()
 
-        filters = data.get('filters', {})
-        page = int(data.get('page', 1))
-        page_size = int(data.get('page_size', 10))
-        offset = (page - 1) * page_size
+        allowed_fields = ['company_id', 'company_name', 'company_type', 'company_abbreviation']
 
-        allowed_fields = ['company_id', 'company_name', 'company_type', 'company_abbreviation', 'note']
-
-        where_clauses = []
-        params = []
-
-        for field, value in filters.items():
-            if field in allowed_fields:
-                if isinstance(value, str) and '%' in value:
-                    where_clauses.append(f"{field} LIKE %s")
-                    params.append(value)
-                else:
-                    where_clauses.append(f"{field} = %s")
-                    params.append(value)
-
-        where_clauses.append(f"deleted = 0")
-
-        where_sql = " AND ".join(where_clauses)
-        if where_sql:
-            where_sql = "WHERE " + where_sql
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -321,7 +353,6 @@ def query_company_with_pagination():
         ORDER BY add_time DESC
         LIMIT %s OFFSET %s
         """
-        params.extend([page_size, offset])
 
         # 查询总条数
         count_sql = f"""
@@ -330,17 +361,7 @@ def query_company_with_pagination():
         {where_sql}
         """
 
-        conn = get_db_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-
-        cursor.execute(count_sql, params[:-2])  # 不要 LIMIT 参数
-        total = cursor.fetchone()['total']
-
-        cursor.execute(query_sql, params)
-        rows = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
+        total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
             "total": total,
@@ -352,36 +373,43 @@ def query_company_with_pagination():
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/company/delete', methods=['POST'])
-def delete_companies():
+
+@app.route('/api/machine/query', methods=['POST'])
+def query_machine_with_pagination():
     try:
         data = request.get_json()
-        ids = data.get('ids')
 
-        if not ids or not isinstance(ids, list):
-            return jsonify({'error': 'Invalid or missing "ids" list'}), 400
+        allowed_fields = ['machine_id', 'machine_name', 'machine_order']
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
 
-        # 构造 SQL：DELETE FROM table WHERE id IN (%s, %s, ...)
-        format_strings = ','.join(['%s'] * len(ids))
-        sql = f"UPDATE knit_company set deleted=1 WHERE company_id IN ({format_strings})"
+        # 查询数据
+        query_sql = f"""
+        SELECT machine_id, machine_name, machine_order, add_time, edit_time, note
+        FROM knit_machine
+        {where_sql}
+        ORDER BY add_time DESC
+        LIMIT %s OFFSET %s
+        """
 
-        cursor.execute(sql, tuple(ids))
-        conn.commit()
-        affected_rows = cursor.rowcount
+        # 查询总条数
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM knit_machine
+        {where_sql}
+        """
 
-        cursor.close()
-        conn.close()
+        total, rows = execute_query_sql(count_sql, query_sql, params)
 
-        return jsonify({'message': f'Deleted {affected_rows} companies'}), 200
+        return jsonify({
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
