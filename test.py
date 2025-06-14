@@ -216,7 +216,43 @@ def update_generic():
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-    
+
+@app.route('/api/generic/delete', methods=['POST'])
+def delete_generic():
+    data = request.get_json()
+    table_name = data.get('table_name')
+    pk_name = data.get('pk_name')
+    pk_values = data.get('pk_values')  # 期望是列表或数组
+    user_id = request.user['user_id']  # 需要 @before_request 已经赋值
+
+    if not all([table_name, pk_name, pk_values]):
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    # 确保 pk_values 是 JSON 字符串格式传给存储过程
+    try:
+        pk_values_json = json.dumps(pk_values)
+    except Exception as e:
+        return jsonify({'error': 'pk_values must be JSON serializable'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 调用存储过程
+        cursor.callproc('delete_generic_secure', (table_name, pk_name, user_id, pk_values_json))
+        conn.commit()
+
+        affected_rows = cursor.rowcount  # 受影响行数，有时可能不准确，视 MySQL 版本
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Delete successful', 'affected_rows': affected_rows})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/combobox', methods=['GET'])
 def get_combobox_values():
     try:
