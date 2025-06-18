@@ -481,7 +481,8 @@ def refresh_token():
     return jsonify({
         'token': token,
         'expires_at': int(exp_time.timestamp()),
-        "expires_seconds": JWT_EXPIRE_SECONDS
+        "expires_seconds": JWT_EXPIRE_SECONDS,
+        'user_name': request.user['user_name']
     })
 
 
