@@ -216,6 +216,37 @@ def update_generic():
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
+    
+@app.route('/api/generic/update_batch', methods=['POST'])
+def update_batch_generic():
+    try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        pk_name = data.get('pk_name')
+        pk_values = data.get('pk_values')
+        json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
+
+        if not table_name or not pk_name or not json_data:
+            return jsonify({'error': 'Missing required parameters'}), 400
+
+        json_str = json.dumps(json_data, ensure_ascii=False)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.callproc('update_generic_batch', [table_name, pk_name, pk_values, request.user['user_id'], json_str])
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Update successful'}), 201
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/generic/delete', methods=['POST'])
 def delete_generic():
@@ -223,7 +254,6 @@ def delete_generic():
     table_name = data.get('table_name')
     pk_name = data.get('pk_name')
     pk_values = data.get('pk_values')  # 期望是列表或数组
-    user_id = request.user['user_id']  # 需要 @before_request 已经赋值
 
     if not all([table_name, pk_name, pk_values]):
         return jsonify({'error': 'Missing required parameters'}), 400
@@ -239,7 +269,7 @@ def delete_generic():
         cursor = conn.cursor()
 
         # 调用存储过程
-        cursor.callproc('delete_generic_secure', (table_name, pk_name, user_id, pk_values_json))
+        cursor.callproc('delete_generic', (table_name, pk_name, request.user['user_id'], pk_values_json))
         conn.commit()
 
         affected_rows = cursor.rowcount  # 受影响行数，有时可能不准确，视 MySQL 版本
@@ -310,8 +340,6 @@ def analyze_query_data(allowed_fields, data):
         where_clauses.append(f"add_time <= %s")
         params.append(date_range['end_date'])
 
-    where_clauses.append(f"deleted = 0")
-
     where_sql = " AND ".join(where_clauses)
 
     if where_sql:
@@ -379,14 +407,17 @@ def query_machine_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['machine_id', 'machine_name', 'machine_order']
+        allowed_fields = ['machine_id', 'machine_name', 'order_no', 'order_cloth_name', 'order_cloth_color']
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
 
         # 查询数据
         query_sql = f"""
-        SELECT machine_id, machine_name, machine_order, add_time, edit_time, note
-        FROM knit_machine
+        select * from (
+        select A.machine_id, A.machine_name, A.add_time, A.edit_time, A.note,
+        B.order_no, B.order_cloth_name, B.order_cloth_color
+        from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
+        ) as tmp
         {where_sql}
         ORDER BY add_time DESC
         LIMIT %s OFFSET %s
@@ -395,7 +426,57 @@ def query_machine_with_pagination():
         # 查询总条数
         count_sql = f"""
         SELECT COUNT(*) as total
-        FROM knit_machine
+        from (
+        select A.machine_id, A.machine_name, A.add_time, A.edit_time, A.note,
+        B.order_no, B.order_cloth_name, B.order_cloth_color
+        from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
+        ) as tmp
+        {where_sql}
+        """
+
+        total, rows = execute_query_sql(count_sql, query_sql, params)
+
+        return jsonify({
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/order/query', methods=['POST'])
+def query_order_with_pagination():
+    try:
+        data = request.get_json()
+
+        allowed_fields = ['order_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'company_name', 'company_abbreviation']
+
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+
+        # 查询数据
+        query_sql = f"""
+        select * from (
+        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
+        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        B.company_name, B.company_abbreviation
+        from knit_order A left join knit_company B on A.order_custom_id = B.company_id
+        ) as tmp
+        {where_sql}
+        ORDER BY add_time DESC
+        LIMIT %s OFFSET %s
+        """
+
+        # 查询总条数
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        from (
+        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
+        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        B.company_name, B.company_abbreviation
+        from knit_order A left join knit_company B on A.order_custom_id = B.company_id
+        ) as tmp
         {where_sql}
         """
 
@@ -446,10 +527,7 @@ def login():
                 'token': token,
                 'expires_at': int(exp_time.timestamp()),
                 "expires_seconds": JWT_EXPIRE_SECONDS,
-                'user': {
-                    'user_id': user['user_id'],
-                    'user_name': user['user_name'],
-                }
+                'user_name': user['user_name'],
             }), 200
         else:
             return jsonify({'error': 'Invalid username or password'}), 401
