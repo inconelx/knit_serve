@@ -195,7 +195,7 @@ def update_generic():
         pk_value = data.get('pk_value')
         json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
 
-        if not table_name or not pk_name or not json_data:
+        if not all([table_name, pk_name, json_data, pk_value]):
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
@@ -226,15 +226,16 @@ def update_batch_generic():
         pk_values = data.get('pk_values')
         json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
 
-        if not table_name or not pk_name or not json_data:
+        if not all([table_name, pk_name, json_data, pk_values]):
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
+        pk_values_json = json.dumps(pk_values)
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.callproc('update_generic_batch', [table_name, pk_name, pk_values, request.user['user_id'], json_str])
+        cursor.callproc('update_generic_batch', [table_name, pk_name, pk_values_json, request.user['user_id'], json_str])
         conn.commit()
 
         cursor.close()
@@ -250,24 +251,20 @@ def update_batch_generic():
 
 @app.route('/api/generic/delete', methods=['POST'])
 def delete_generic():
-    data = request.get_json()
-    table_name = data.get('table_name')
-    pk_name = data.get('pk_name')
-    pk_values = data.get('pk_values')  # 期望是列表或数组
-
-    if not all([table_name, pk_name, pk_values]):
-        return jsonify({'error': 'Missing required parameters'}), 400
-
-    # 确保 pk_values 是 JSON 字符串格式传给存储过程
     try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        pk_name = data.get('pk_name')
+        pk_values = data.get('pk_values')  # 期望是列表或数组
+
+        if not all([table_name, pk_name, pk_values]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+
         pk_values_json = json.dumps(pk_values)
-    except Exception as e:
-        return jsonify({'error': 'pk_values must be JSON serializable'}), 400
 
-    try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
+        
         # 调用存储过程
         cursor.callproc('delete_generic', (table_name, pk_name, request.user['user_id'], pk_values_json))
         conn.commit()
@@ -461,7 +458,7 @@ def query_order_with_pagination():
         select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
         A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
         B.company_name, B.company_abbreviation
-        from knit_order A left join knit_company B on A.order_custom_id = B.company_id
+        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
         ) as tmp
         {where_sql}
         ORDER BY add_time DESC
@@ -475,7 +472,7 @@ def query_order_with_pagination():
         select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
         A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
         B.company_name, B.company_abbreviation
-        from knit_order A left join knit_company B on A.order_custom_id = B.company_id
+        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
         ) as tmp
         {where_sql}
         """
