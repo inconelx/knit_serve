@@ -521,7 +521,8 @@ def query_cloth_with_pagination():
         C.machine_name, 
         D.delivery_no, D.add_time AS delivery_time, 
         E.user_name AS add_user_name, 
-        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status
+        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status,
+        (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
