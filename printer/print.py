@@ -1,12 +1,13 @@
 import win32com.client
-import win32print
+from printer.generateExcel import generateExcel
+import os
 
 
 wpsCom = win32com.client.Dispatch('Ket.Application')
 wpsCom.Visible = False
 wpsCom.DisplayAlerts = False
 wpsCom.PrintCommunication = False
-def printExcel(excel_file):
+def _printExcel(excel_file):
     try:
         workbook = wpsCom.Workbooks.Open(excel_file)
         active_sheet = workbook.ActiveSheet
@@ -26,6 +27,17 @@ def printExcel(excel_file):
     finally:
         workbook.Close(False)
 
+'''
+    printExcel
+    功能： 通过传入的数据打印Excel
+    参数： data => 字段 - 数值 对应的json结构
+    返回： 无
+'''
+def printExcel(data):
+    excelPath = generateExcel(data)
+    _printExcel(excelPath)
+    os.remove(os.path.abspath(excelPath))
+
 
 if __name__ == '__main__':
-    printExcel(rf"C:\Users\cja\Downloads\个人产品-复盘专项_2025-06-10_20_05_14.xlsx")
+    printExcel({'cja': '1', 'jzh': '2'})
