@@ -318,7 +318,7 @@ def normalize_date_range(date_strs):
     end_date = date_strs[1] + ' 23:59:59'
     return start_date, end_date
 
-def analyze_query_data(allowed_fields, data):
+def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
     filters = data.get('filters', {})
     date_ranges = data.get('date_ranges', {})
     page = int(data.get('page', 1))
@@ -337,24 +337,14 @@ def analyze_query_data(allowed_fields, data):
                 where_clauses.append(f"{field} = %s")
                 params.append(value)
 
-    # if 'beg_date' in date_range:
-    #     where_clauses.append(f"add_time >= %s")
-    #     params.append(date_range['beg_date'])
-
-    # if 'end_date' in date_range:
-    #     where_clauses.append(f"add_time <= %s")
-    #     params.append(date_range['end_date'])
-
     for field, date_pair in date_ranges.items():
-        if field in allowed_fields:
+        if field in allowed_date_range_fields:
             start, end = normalize_date_range(date_pair)
             if start and end:
                 where_clauses.append(f"{field} BETWEEN %s AND %s")
                 params.extend([start, end])
 
     where_sql = " AND ".join(where_clauses)
-
-    print(where_sql)
 
     if where_sql:
         where_sql = "WHERE " + where_sql
@@ -367,11 +357,15 @@ def execute_query_sql(count_sql, query_sql, params):
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
+    cursor.execute(query_sql, params)
+    rows = cursor.fetchall()
+
+    print(rows)
+    
     cursor.execute(count_sql, params[:-2])  # 不要 LIMIT 参数
     total = cursor.fetchone()['total']
 
-    cursor.execute(query_sql, params)
-    rows = cursor.fetchall()
+    print(total)
 
     cursor.close()
     conn.close()
@@ -384,8 +378,9 @@ def query_company_with_pagination():
         data = request.get_json()
 
         allowed_fields = ['company_id', 'company_name', 'company_type', 'company_abbreviation']
+        allowed_date_range_fields = ['add_time']
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -422,8 +417,9 @@ def query_machine_with_pagination():
         data = request.get_json()
 
         allowed_fields = ['machine_id', 'machine_name', 'order_no', 'order_cloth_name', 'order_cloth_color']
+        allowed_date_range_fields = ['add_time']
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -466,8 +462,9 @@ def query_order_with_pagination():
         data = request.get_json()
 
         allowed_fields = ['order_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'company_name', 'company_abbreviation']
+        allowed_date_range_fields = ['add_time']
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -512,16 +509,24 @@ def query_cloth_with_pagination():
         data = request.get_json()
 
         allowed_fields = ['cloth_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'machine_name', 'delivery_no']
+        allowed_date_range_fields = ['add_time', 'delivery_time']
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
         select * from (
-        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
-        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
-        B.company_name, B.company_abbreviation
-        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
+        select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
+        B.order_no, B.order_cloth_name, B.order_cloth_color, 
+        C.machine_name, 
+        D.delivery_no, D.add_time AS delivery_time, 
+        E.user_name AS add_user_name, 
+        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status
+        from knit_cloth A
+        left join knit_order B on A.cloth_order_id = B.order_id
+        left join knit_machine C on A.cloth_machine_id = C.machine_id
+        left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
+        left join sys_user E on A.add_user_id = E.user_id
         ) as tmp
         {where_sql}
         ORDER BY add_time DESC
@@ -530,12 +535,19 @@ def query_cloth_with_pagination():
 
         # 查询总条数
         count_sql = f"""
-        SELECT COUNT(*) as total
+        select COUNT(*) as total
         from (
-        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
-        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
-        B.company_name, B.company_abbreviation
-        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
+        select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
+        B.order_no, B.order_cloth_name, B.order_cloth_color, 
+        C.machine_name, 
+        D.delivery_no, D.add_time AS delivery_time, 
+        E.user_name AS add_user_name, 
+        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status
+        from knit_cloth A
+        left join knit_order B on A.cloth_order_id = B.order_id
+        left join knit_machine C on A.cloth_machine_id = C.machine_id
+        left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
+        left join sys_user E on A.add_user_id = E.user_id
         ) as tmp
         {where_sql}
         """
