@@ -1,0 +1,203 @@
+# ========================
+# 通用操作系统文件
+# ========================
+.DS_Store            # macOS 桌面服务存储
+Thumbs.db            # Windows 缩略图缓存
+desktop.ini          # Windows 文件夹配置
+*.log                # 所有日志文件
+*.tmp                # 临时文件
+*.bak                # 备份文件
+*.swp                # Vim 交换文件
+~$*                  # Office 临时文件
+
+# ========================
+# 开发工具 & IDE
+# ========================
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs (IntelliJ, PyCharm, WebStorm等)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.idea_modules/
+
+# Eclipse
+.settings/
+.metadata/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# ========================
+# 编程语言相关
+# ========================
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+env/
+.venv/
+env.bak/
+venv.bak/
+dist/
+build/
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+# Yarn 2
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Java
+*.class
+*.war
+*.ear
+*.jar
+hs_err_pid*
+
+# C/C++
+*.o
+*.ko
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.app
+
+# Go
+/bin/
+/pkg/
+/out/
+
+# Rust
+/target/
+**/*.rs.bk
+
+# ========================
+# 前端开发
+# ========================
+# 依赖目录
+bower_components/
+
+# 构建输出
+dist/
+build/
+public/build/
+staticfiles/
+
+# 缓存和包
+.cache/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# ========================
+# 环境与配置
+# ========================
+# 环境变量文件
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# 敏感配置文件
+config/secrets.yml
+credentials.json
+firebase-key.json
+*.key
+*.pem
+*.crt
+
+# ========================
+# 包管理器 & 构建工具
+# ========================
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+
+# Gradle
+.gradle/
+build/
+
+# Composer (PHP)
+/vendor/
+composer.lock
+
+# ========================
+# 文档与测试
+# ========================
+# 文档生成
+docs/_build/
+site/
+
+# 单元测试
+junit.xml
+test-results/
+reports/
+
+# ========================
+# 其他常见忽略项
+# ========================
+# 系统文件
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# 压缩文件
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 图像和媒体
+*.png
+*.jpg
+*.gif
+*.mp4
+*.mov
