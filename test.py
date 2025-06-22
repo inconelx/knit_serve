@@ -310,9 +310,17 @@ def get_combobox_values():
         return jsonify({'error': str(e)}), 500
 
 
+def normalize_date_range(date_strs):
+    """将前端传入的 ['2025-06-01', '2025-06-18'] 扩展为完整时间段"""
+    if not isinstance(date_strs, list) or len(date_strs) != 2:
+        return None, None
+    start_date = date_strs[0] + ' 00:00:00'
+    end_date = date_strs[1] + ' 23:59:59'
+    return start_date, end_date
+
 def analyze_query_data(allowed_fields, data):
     filters = data.get('filters', {})
-    date_range = data.get('date_range', {})
+    date_ranges = data.get('date_ranges', {})
     page = int(data.get('page', 1))
     page_size = int(data.get('page_size', 10))
     offset = (page - 1) * page_size
@@ -329,15 +337,24 @@ def analyze_query_data(allowed_fields, data):
                 where_clauses.append(f"{field} = %s")
                 params.append(value)
 
-    if 'beg_date' in date_range:
-        where_clauses.append(f"add_time >= %s")
-        params.append(date_range['beg_date'])
+    # if 'beg_date' in date_range:
+    #     where_clauses.append(f"add_time >= %s")
+    #     params.append(date_range['beg_date'])
 
-    if 'end_date' in date_range:
-        where_clauses.append(f"add_time <= %s")
-        params.append(date_range['end_date'])
+    # if 'end_date' in date_range:
+    #     where_clauses.append(f"add_time <= %s")
+    #     params.append(date_range['end_date'])
+
+    for field, date_pair in date_ranges.items():
+        if field in allowed_fields:
+            start, end = normalize_date_range(date_pair)
+            if start and end:
+                where_clauses.append(f"{field} BETWEEN %s AND %s")
+                params.extend([start, end])
 
     where_sql = " AND ".join(where_clauses)
+
+    print(where_sql)
 
     if where_sql:
         where_sql = "WHERE " + where_sql
@@ -488,6 +505,52 @@ def query_order_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/cloth/query', methods=['POST'])
+def query_cloth_with_pagination():
+    try:
+        data = request.get_json()
+
+        allowed_fields = ['cloth_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'machine_name', 'delivery_no']
+
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, data)
+
+        # 查询数据
+        query_sql = f"""
+        select * from (
+        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
+        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        B.company_name, B.company_abbreviation
+        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
+        ) as tmp
+        {where_sql}
+        ORDER BY add_time DESC
+        LIMIT %s OFFSET %s
+        """
+
+        # 查询总条数
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        from (
+        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
+        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        B.company_name, B.company_abbreviation
+        from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
+        ) as tmp
+        {where_sql}
+        """
+
+        total, rows = execute_query_sql(count_sql, query_sql, params)
+
+        return jsonify({
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500    
 
 @app.route('/api/login', methods=['POST'])
 def login():
