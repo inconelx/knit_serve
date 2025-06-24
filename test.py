@@ -230,7 +230,7 @@ def update_batch_generic():
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
-        pk_values_json = json.dumps(pk_values)
+        pk_values_json = json.dumps(pk_values, ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -359,13 +359,9 @@ def execute_query_sql(count_sql, query_sql, params):
 
     cursor.execute(query_sql, params)
     rows = cursor.fetchall()
-
-    print(rows)
     
     cursor.execute(count_sql, params[:-2])  # 不要 LIMIT 参数
     total = cursor.fetchone()['total']
-
-    print(total)
 
     cursor.close()
     conn.close()
@@ -508,7 +504,7 @@ def query_cloth_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['cloth_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'machine_name', 'delivery_no']
+        allowed_fields = ['cloth_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'machine_name', 'delivery_no', 'add_user_name', 'delivery_status']
         allowed_date_range_fields = ['add_time', 'delivery_time']
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
@@ -517,12 +513,13 @@ def query_cloth_with_pagination():
         query_sql = f"""
         select * from (
         select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
-        B.order_no, B.order_cloth_name, B.order_cloth_color, 
+        B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
         C.machine_name, 
         D.delivery_no, D.add_time AS delivery_time, 
         E.user_name AS add_user_name, 
         IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status,
-        (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight
+        (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight, 
+        A.cloth_order_id, A.cloth_machine_id, A.add_user_id
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
@@ -538,7 +535,7 @@ def query_cloth_with_pagination():
         count_sql = f"""
         select COUNT(*) as total
         from (
-        select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
+        select A.cloth_id, A.add_time, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, 
         C.machine_name, 
         D.delivery_no, D.add_time AS delivery_time, 
@@ -564,6 +561,71 @@ def query_cloth_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500    
+
+@app.route('/api/machine/search', methods=['POST'])
+def machine_search():
+    try:
+        data = request.get_json()
+        size = data.get('size')
+        keyword = data.get('keyword')
+
+        if not size or not isinstance(keyword, str):
+            return jsonify({'error': 'Missing size or keyword'}), 400
+
+        query_sql = f"""
+        select A.machine_id, A.machine_name, B.order_id, B.order_no
+        from knit_machine A
+        left join knit_order B on A.machine_order_id = B.order_id
+        where machine_name like CONCAT('%%', %s, '%%')
+        ORDER BY LOCATE(%s, machine_name), machine_name
+        LIMIT %s
+        """
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute(query_sql, [keyword, keyword, size])
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return jsonify(rows)
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
+
+@app.route('/api/order/search', methods=['POST'])
+def order_search():
+    try:
+        data = request.get_json()
+        size = data.get('size')
+        keyword = data.get('keyword')
+
+        if not size or not isinstance(keyword, str):
+            return jsonify({'error': 'Missing size or keyword'}), 400
+
+        query_sql = f"""
+        select order_id, order_no
+        from knit_order 
+        where order_no like CONCAT('%%', %s, '%%')
+        ORDER BY LOCATE(%s, order_no), order_no
+        LIMIT %s
+        """
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute(query_sql, [keyword, keyword, size])
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return jsonify(rows)
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
