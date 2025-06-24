@@ -433,7 +433,7 @@ def query_machine_with_pagination():
         count_sql = f"""
         SELECT COUNT(*) as total
         from (
-        select A.machine_id, A.machine_name, A.add_time, A.edit_time, A.note,
+        select A.machine_id, A.machine_name, A.add_time,
         B.order_no, B.order_cloth_name, B.order_cloth_color
         from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
         ) as tmp
@@ -466,7 +466,8 @@ def query_order_with_pagination():
         query_sql = f"""
         select * from (
         select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
-        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note, 
+        A.order_custom_company_id, 
         B.company_name, B.company_abbreviation
         from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
         ) as tmp
@@ -479,8 +480,8 @@ def query_order_with_pagination():
         count_sql = f"""
         SELECT COUNT(*) as total
         from (
-        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
-        A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note,
+        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, 
+        A.add_time,
         B.company_name, B.company_abbreviation
         from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
         ) as tmp
@@ -515,11 +516,11 @@ def query_cloth_with_pagination():
         select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
         C.machine_name, 
-        D.delivery_no, D.add_time AS delivery_time, 
+        D.add_time AS delivery_time, 
         E.user_name AS add_user_name, 
         IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status,
         (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight, 
-        A.cloth_order_id, A.cloth_machine_id, A.add_user_id
+        A.cloth_order_id, A.cloth_machine_id, A.cloth_delivery_id, A.add_user_id
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
@@ -538,9 +539,10 @@ def query_cloth_with_pagination():
         select A.cloth_id, A.add_time, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, 
         C.machine_name, 
-        D.delivery_no, D.add_time AS delivery_time, 
+        D.add_time AS delivery_time, 
         E.user_name AS add_user_name, 
-        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status
+        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status, 
+        A.cloth_delivery_id
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
@@ -626,6 +628,38 @@ def order_search():
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
+    
+@app.route('/api/company/search', methods=['POST'])
+def company_search():
+    try:
+        data = request.get_json()
+        size = data.get('size')
+        keyword = data.get('keyword')
+
+        if not size or not isinstance(keyword, str):
+            return jsonify({'error': 'Missing size or keyword'}), 400
+
+        query_sql = f"""
+        select company_id, company_abbreviation
+        from knit_company 
+        where company_abbreviation like CONCAT('%%', %s, '%%')
+        ORDER BY LOCATE(%s, company_abbreviation), company_abbreviation
+        LIMIT %s
+        """
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute(query_sql, [keyword, keyword, size])
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return jsonify(rows)
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
 
 @app.route('/api/login', methods=['POST'])
 def login():
