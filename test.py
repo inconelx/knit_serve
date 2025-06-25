@@ -320,6 +320,7 @@ def normalize_date_range(date_strs):
 
 def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
     filters = data.get('filters', {})
+    fuzzy_fields = data.get('fuzzy_fields', {})
     date_ranges = data.get('date_ranges', {})
     page = int(data.get('page', 1))
     page_size = int(data.get('page_size', 10))
@@ -330,18 +331,23 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
 
     for field, value in filters.items():
         if field in allowed_fields:
-            if isinstance(value, str) and '%' in value:
-                where_clauses.append(f"{field} LIKE %s")
-                params.append(value)
-            else:
-                where_clauses.append(f"{field} = %s")
-                params.append(value)
+            if value is True:
+                where_clauses.append(f"{allowed_fields[field]} IS NOT NULL")
+            elif value is False:
+                where_clauses.append(f"{allowed_fields[field]} IS NULL")
+            elif isinstance(value, str):
+                if field in fuzzy_fields:
+                    where_clauses.append(f"{allowed_fields[field]} LIKE %s")
+                    params.append(f"%{value.replace('%', r'\%')}%")
+                else:
+                    where_clauses.append(f"{allowed_fields[field]} = %s")
+                    params.append(value)
 
     for field, date_pair in date_ranges.items():
         if field in allowed_date_range_fields:
             start, end = normalize_date_range(date_pair)
             if start and end:
-                where_clauses.append(f"{field} BETWEEN %s AND %s")
+                where_clauses.append(f"{allowed_date_range_fields[field]} BETWEEN %s AND %s")
                 params.extend([start, end])
 
     where_sql = " AND ".join(where_clauses)
@@ -373,8 +379,15 @@ def query_company_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['company_id', 'company_name', 'company_type', 'company_abbreviation']
-        allowed_date_range_fields = ['add_time']
+        allowed_fields = {
+            'company_id': 'company_id',
+            'company_name': 'company_name',
+            'company_type': 'company_type',
+            'company_abbreviation': 'company_abbreviation'
+        }
+        allowed_date_range_fields = {
+            'add_time': 'add_time'
+        }
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
@@ -412,18 +425,24 @@ def query_machine_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['machine_id', 'machine_name', 'order_no', 'order_cloth_name', 'order_cloth_color']
-        allowed_date_range_fields = ['add_time']
+        allowed_fields = {
+            'machine_id': 'A.machine_id',
+            'machine_name': 'A.machine_name',
+            'order_no': 'B.order_no',
+            'order_cloth_name': 'B.order_cloth_name',
+            'order_cloth_color': 'B.order_cloth_color',
+        }
+        allowed_date_range_fields = {
+            'add_time': 'A.add_time'
+        }
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
-        select * from (
         select A.machine_id, A.machine_name, A.add_time, A.edit_time, A.note,
         B.order_no, B.order_cloth_name, B.order_cloth_color
         from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
-        ) as tmp
         {where_sql}
         ORDER BY add_time DESC
         LIMIT %s OFFSET %s
@@ -432,11 +451,7 @@ def query_machine_with_pagination():
         # 查询总条数
         count_sql = f"""
         SELECT COUNT(*) as total
-        from (
-        select A.machine_id, A.machine_name, A.add_time,
-        B.order_no, B.order_cloth_name, B.order_cloth_color
         from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
-        ) as tmp
         {where_sql}
         """
 
@@ -457,20 +472,27 @@ def query_order_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['order_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'company_name', 'company_abbreviation']
-        allowed_date_range_fields = ['add_time']
+        allowed_fields = {
+            'order_id': 'A.order_id',
+            'order_no': 'A.order_no',
+            'order_cloth_name': 'A.order_cloth_name',
+            'order_cloth_color': 'A.order_cloth_color',
+            'company_name': 'B.company_name',
+            'company_abbreviation': 'B.company_abbreviation'
+        }
+        allowed_date_range_fields = {
+            'add_time': 'A.add_time'
+        }
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
-        select * from (
         select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, A.order_cloth_piece,
         A.order_cloth_weight, A.order_cloth_weight_price, A.order_cloth_add, A.add_time, A.edit_time, A.note, 
         A.order_custom_company_id, 
         B.company_name, B.company_abbreviation
         from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
-        ) as tmp
         {where_sql}
         ORDER BY add_time DESC
         LIMIT %s OFFSET %s
@@ -479,12 +501,7 @@ def query_order_with_pagination():
         # 查询总条数
         count_sql = f"""
         SELECT COUNT(*) as total
-        from (
-        select A.order_id, A.order_no, A.order_cloth_name, A.order_cloth_color, 
-        A.add_time,
-        B.company_name, B.company_abbreviation
         from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
-        ) as tmp
         {where_sql}
         """
 
@@ -505,14 +522,25 @@ def query_cloth_with_pagination():
     try:
         data = request.get_json()
 
-        allowed_fields = ['cloth_id', 'order_no', 'order_cloth_name', 'order_cloth_color', 'machine_name', 'delivery_no', 'add_user_name', 'delivery_status']
-        allowed_date_range_fields = ['add_time', 'delivery_time']
+        allowed_fields = {
+            'cloth_id': 'A.cloth_id',
+            'cloth_delivery_id': 'A.cloth_delivery_id',
+            'order_no': 'B.order_no',
+            'order_cloth_name': 'B.order_cloth_name',
+            'order_cloth_color': 'B.order_cloth_color',
+            'machine_name': 'C.machine_name',
+            'add_user_name': 'E.user_name',
+            'delivery_status': 'A.cloth_delivery_id'
+        }
+        allowed_date_range_fields = {
+            'add_time': 'A.add_time',
+            'delivery_time': 'D.add_time'
+        }
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
-        select * from (
         select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
         C.machine_name, 
@@ -526,7 +554,6 @@ def query_cloth_with_pagination():
         left join knit_machine C on A.cloth_machine_id = C.machine_id
         left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
         left join sys_user E on A.add_user_id = E.user_id
-        ) as tmp
         {where_sql}
         ORDER BY add_time DESC
         LIMIT %s OFFSET %s
@@ -535,20 +562,11 @@ def query_cloth_with_pagination():
         # 查询总条数
         count_sql = f"""
         select COUNT(*) as total
-        from (
-        select A.cloth_id, A.add_time, 
-        B.order_no, B.order_cloth_name, B.order_cloth_color, 
-        C.machine_name, 
-        D.add_time AS delivery_time, 
-        E.user_name AS add_user_name, 
-        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status, 
-        A.cloth_delivery_id
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
         left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
         left join sys_user E on A.add_user_id = E.user_id
-        ) as tmp
         {where_sql}
         """
 
@@ -562,7 +580,64 @@ def query_cloth_with_pagination():
         }), 200
 
     except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500    
+        return jsonify({'error': str(e)}), 500 
+
+
+@app.route('/api/delivery/query', methods=['POST'])
+def query_delivery_with_pagination():
+    try:
+        data = request.get_json()
+
+        allowed_fields = {
+            'delivery_id': 'A.delivery_id',
+            'company_name': 'B.company_name',
+            'company_abbreviation': 'B.company_abbreviation'
+        }
+        allowed_date_range_fields = {
+            'add_time': 'A.add_time'
+        }
+
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+
+        # 查询数据
+        query_sql = f"""
+        select A.delivery_id, A.add_time, A.edit_time, A.note, 
+        A.delivery_company_id, 
+        B.company_name, B.company_abbreviation, 
+        C.delivery_piece, C.delivery_weight
+        from knit_delivery A 
+        left join knit_company B on A.delivery_company_id = B.company_id
+        left join (
+        select AA.cloth_delivery_id, COUNT(AA.cloth_id) AS delivery_piece, 
+        SUM(AA.cloth_weight) + SUM(AA.cloth_weight + COALESCE(AA.cloth_weight_correct, 0) + COALESCE(BB.order_cloth_add, 0)) AS delivery_weight
+        from knit_cloth AA
+        left join knit_order BB on AA.cloth_order_id = BB.order_id
+        GROUP BY AA.cloth_delivery_id
+        ) C on A.delivery_id = C.cloth_delivery_id
+        {where_sql}
+        ORDER BY add_time DESC
+        LIMIT %s OFFSET %s
+        """
+
+        # 查询总条数
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        from knit_delivery A 
+        left join knit_company B on A.delivery_company_id = B.company_id
+        {where_sql}
+        """
+
+        total, rows = execute_query_sql(count_sql, query_sql, params)
+
+        return jsonify({
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500       
 
 @app.route('/api/machine/search', methods=['POST'])
 def machine_search():
