@@ -352,10 +352,14 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
 
     where_sql = " AND ".join(where_clauses)
 
+    print(where_sql)
+    
+
     if where_sql:
         where_sql = "WHERE " + where_sql
 
     params.extend([page_size, offset])
+    print(params)
 
     return where_sql, params, page, page_size
 
@@ -529,8 +533,9 @@ def query_cloth_with_pagination():
             'order_cloth_name': 'B.order_cloth_name',
             'order_cloth_color': 'B.order_cloth_color',
             'machine_name': 'C.machine_name',
-            'add_user_name': 'E.user_name',
-            'delivery_status': 'A.cloth_delivery_id'
+            'delivery_no': 'D.delivery_no',
+            'delivery_status': 'D.delivery_no',
+            'add_user_name': 'E.user_name'
         }
         allowed_date_range_fields = {
             'add_time': 'A.add_time',
@@ -544,9 +549,9 @@ def query_cloth_with_pagination():
         select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
         C.machine_name, 
-        D.add_time AS delivery_time, 
+        D.delivery_no, D.add_time AS delivery_time, 
         E.user_name AS add_user_name, 
-        IF(A.cloth_delivery_id IS NULL, 0, 1) AS delivery_status,
+        IF(D.delivery_no IS NULL, 0, 1) AS delivery_status,
         (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight, 
         A.cloth_order_id, A.cloth_machine_id, A.cloth_delivery_id, A.add_user_id
         from knit_cloth A
@@ -590,6 +595,7 @@ def query_delivery_with_pagination():
 
         allowed_fields = {
             'delivery_id': 'A.delivery_id',
+            'delivery_no': 'A.delivery_no',
             'company_name': 'B.company_name',
             'company_abbreviation': 'B.company_abbreviation'
         }
@@ -601,7 +607,7 @@ def query_delivery_with_pagination():
 
         # 查询数据
         query_sql = f"""
-        select A.delivery_id, A.add_time, A.edit_time, A.note, 
+        select A.delivery_id, A.delivery_no, A.add_time, A.edit_time, A.note, 
         A.delivery_company_id, 
         B.company_name, B.company_abbreviation, 
         C.delivery_piece, C.delivery_weight
@@ -609,7 +615,7 @@ def query_delivery_with_pagination():
         left join knit_company B on A.delivery_company_id = B.company_id
         left join (
         select AA.cloth_delivery_id, COUNT(AA.cloth_id) AS delivery_piece, 
-        SUM(AA.cloth_weight) + SUM(AA.cloth_weight + COALESCE(AA.cloth_weight_correct, 0) + COALESCE(BB.order_cloth_add, 0)) AS delivery_weight
+        SUM(AA.cloth_origin_weight + COALESCE(AA.cloth_weight_correct, 0) + COALESCE(BB.order_cloth_add, 0)) AS delivery_weight
         from knit_cloth AA
         left join knit_order BB on AA.cloth_order_id = BB.order_id
         GROUP BY AA.cloth_delivery_id
