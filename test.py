@@ -352,14 +352,10 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
 
     where_sql = " AND ".join(where_clauses)
 
-    print(where_sql)
-    
-
     if where_sql:
         where_sql = "WHERE " + where_sql
 
     params.extend([page_size, offset])
-    print(params)
 
     return where_sql, params, page, page_size
 
@@ -371,7 +367,7 @@ def execute_query_sql(count_sql, query_sql, params):
     rows = cursor.fetchall()
     
     cursor.execute(count_sql, params[:-2])  # 不要 LIMIT 参数
-    total = cursor.fetchone()['total']
+    total = cursor.fetchone()
 
     cursor.close()
     conn.close()
@@ -414,7 +410,7 @@ def query_company_with_pagination():
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
-            "total": total,
+            "total": total['total'],
             "page": page,
             "page_size": page_size,
             "records": rows
@@ -462,7 +458,7 @@ def query_machine_with_pagination():
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
-            "total": total,
+            "total": total['total'],
             "page": page,
             "page_size": page_size,
             "records": rows
@@ -512,7 +508,7 @@ def query_order_with_pagination():
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
-            "total": total,
+            "total": total['total'],
             "page": page,
             "page_size": page_size,
             "records": rows
@@ -560,7 +556,7 @@ def query_cloth_with_pagination():
         left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
         left join sys_user E on A.add_user_id = E.user_id
         {where_sql}
-        ORDER BY add_time DESC
+        ORDER BY add_time DESC, cloth_id DESC
         LIMIT %s OFFSET %s
         """
 
@@ -578,7 +574,7 @@ def query_cloth_with_pagination():
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
-            "total": total,
+            "total": total['total'],
             "page": page,
             "page_size": page_size,
             "records": rows
@@ -636,7 +632,7 @@ def query_delivery_with_pagination():
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
-            "total": total,
+            "total": total['total'],
             "page": page,
             "page_size": page_size,
             "records": rows
