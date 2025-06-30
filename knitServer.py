@@ -43,8 +43,8 @@ def get_db_connection():
 @app.before_request
 def check_login_token():
     # 排除登录接口和其他公开接口
-    open_paths = ['/api/login', '/api/public_key']
-    employee_paths = ['/api/employee/cloth/add', '/api/employee/cloth/query', '/api/employee/cloth/update']
+    open_paths = {'/api/login', '/api/public_key'}
+    employee_paths = {'/api/employee/cloth/add', '/api/employee/cloth/query', '/api/employee/cloth/update'}
     if request.path in open_paths:
         return  # 跳过校验
     if request.method == 'OPTIONS':
@@ -68,10 +68,12 @@ def check_login_token():
 
         if not user:
             return jsonify({'error': 'Missing user'}), 401
-        if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-            return jsonify({'error': 'User has been locked'}), 401
-        if int.from_bytes(user['is_admin'], 'big') == 0 and request.path in employee_paths:
-            return jsonify({'error': 'Insufficient permissions'}), 401
+        
+        if int.from_bytes(user['is_admin'], 'big') == 0:
+            if int.from_bytes(user['is_locked'], 'big') == 1:
+                return jsonify({'error': 'User has been locked'}), 401
+            if request.path not in employee_paths:
+                return jsonify({'error': 'Insufficient permissions'}), 401
 
         request.user = user_data
         request.user['user_name'] = user['user_name']
