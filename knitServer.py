@@ -52,7 +52,24 @@ def check_login_token():
         return jsonify({'error': 'Missing token'}), 401
     try:
         user_data = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # 查询用户信息（包括加密后的密码）
+        sql = "SELECT user_name, is_admin, is_locked FROM sys_user WHERE user_id = %s"
+        cursor.execute(sql, (user_data['user_id'],))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not user:
+            return jsonify({'error': 'Missing user'}), 401
+        if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
+            return jsonify({'error': 'user has been locked'}), 401
+        
         request.user = user_data
+        request.user['user_name'] = user['user_name']
     except jwt.ExpiredSignatureError:
         return jsonify({'error': 'Token expired'}), 401
     except jwt.InvalidTokenError:
@@ -68,9 +85,7 @@ def load_or_generate_keys():
 
 @app.route('/api/public_key', methods=['GET'])
 def get_public_key():
-    return jsonify({
-        'public_key': PUBLIC_KEY_STR
-        })
+    return jsonify({'public_key': PUBLIC_KEY_STR})
 
 def decrypt_password(encrypted_b64: str) -> str:
     encrypted_bytes = base64.b64decode(encrypted_b64)
@@ -634,7 +649,7 @@ def query_delivery_with_pagination():
         select A.delivery_id, A.delivery_no, A.add_time, A.edit_time, A.note, 
         A.delivery_company_id, 
         B.company_name, B.company_abbreviation, 
-        C.delivery_piece, C.delivery_weight
+        COALESCE(C.delivery_piece, 0) AS delivery_piece, COALESCE(C.delivery_weight, 0) AS delivery_weight
         from knit_delivery A 
         left join knit_company B on A.delivery_company_id = B.company_id
         left join (
@@ -780,24 +795,24 @@ def login():
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
         # 查询用户信息（包括加密后的密码）
-        sql = "SELECT user_id, user_name, user_password FROM sys_user WHERE user_name = %s"
+        sql = "SELECT user_id, user_name, user_password, is_admin, is_locked FROM sys_user WHERE user_name = %s"
         cursor.execute(sql, (username,))
         user = cursor.fetchone()
 
         cursor.close()
         conn.close()
-        
+
         if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
+            if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
+                return jsonify({'error': 'user has been locked'}), 401
             # 密码匹配，生成 JWT
             exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=JWT_EXPIRE_SECONDS)
             payload = {
                 'user_id': user['user_id'],
-                'user_name': user['user_name'],
                 'exp': exp_time
             }
             token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
             return jsonify({
-                'message': 'Login successful',
                 'token': token,
                 'expires_at': int(exp_time.timestamp()),
                 "expires_seconds": JWT_EXPIRE_SECONDS,
@@ -826,7 +841,6 @@ def refresh_token():
     exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=JWT_EXPIRE_SECONDS)
     token = jwt.encode({
         'user_id': request.user['user_id'],
-        'user_name': request.user['user_name'],
         'exp': exp_time
     }, JWT_SECRET, algorithm='HS256')
 
