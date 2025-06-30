@@ -19,6 +19,8 @@ CORS(app)
 JWT_SECRET = 'knit_secret_key'         # 用于生成token的密钥
 JWT_EXPIRE_SECONDS = min(max(300, 300), 1800)         # token有效秒
 
+CLOTH_EXPIRE_SECONDS = min(max(300, 900), 1800)
+
 # 配置 MySQL 连接
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
@@ -42,6 +44,7 @@ def get_db_connection():
 def check_login_token():
     # 排除登录接口和其他公开接口
     open_paths = ['/api/login', '/api/public_key']
+    employee_paths = ['/api/employee/cloth/add', '/api/employee/cloth/query', '/api/employee/cloth/update']
     if request.path in open_paths:
         return  # 跳过校验
     if request.method == 'OPTIONS':
@@ -66,8 +69,10 @@ def check_login_token():
         if not user:
             return jsonify({'error': 'Missing user'}), 401
         if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-            return jsonify({'error': 'user has been locked'}), 401
-        
+            return jsonify({'error': 'User has been locked'}), 401
+        if int.from_bytes(user['is_admin'], 'big') == 0 and request.path in employee_paths:
+            return jsonify({'error': 'Insufficient permissions'}), 401
+
         request.user = user_data
         request.user['user_name'] = user['user_name']
     except jwt.ExpiredSignatureError:
@@ -94,102 +99,149 @@ def decrypt_password(encrypted_b64: str) -> str:
         padding=padding.PKCS1v15())
     return decrypted_bytes.decode('utf-8')
 
-@app.route('/api/users', methods=['GET'])
-def get_users():
+@app.route('/api/user/add', methods=['POST'])
+def user_add():
     try:
+        data = request.get_json()
+        json_data = data.get('json_data')
+
+        if not json_data:
+            return jsonify({'error': 'Missing json_data'}), 400
+
+        json_data['user_password'] = decrypt_password(json_data['user_password_encrypted'])
+        json_data.pop('user_password_encrypted', None)
+
+        json_str = json.dumps(json_data, ensure_ascii=False)
+
         conn = get_db_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT id, add_time, name FROM test_table where deleted=0 order by add_time")
-        rows = cursor.fetchall()
+        cursor = conn.cursor()
+
+        cursor.callproc('insert_generic', ['sys_user', 'user_id', request.user['user_id'], json_str])
+        conn.commit()
+
         cursor.close()
         conn.close()
 
-        return jsonify(rows)
+        return jsonify({'message': 'Insert successful'}), 201
+
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-@app.route('/api/users', methods=['POST'])
-def create_user():
+@app.route('/api/user/update', methods=['POST'])
+def user_update():
     try:
         data = request.get_json()
-        name = data.get('name')
+        pk_value = data.get('pk_value')
+        json_data = data.get('json_data')
 
-        if not name:
-            return jsonify({'error': 'Missing name'}), 400
+        if not json_data:
+            return jsonify({'error': 'Missing json_data or pk_value'}), 400
+
+        json_data['user_password'] = decrypt_password(json_data['user_password_encrypted'])
+        json_data.pop('user_password_encrypted', None)
+
+        json_str = json.dumps(json_data, ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO test_table (name) VALUES (%s)", (name,))
+
+        cursor.callproc('update_generic', ['sys_user', 'user_id', pk_value, request.user['user_id'], json_str])
         conn.commit()
+
         cursor.close()
         conn.close()
-        return jsonify({'message': 'User created'}), 201
+
+        return jsonify({'message': 'Insert successful'}), 201
+
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-
-@app.route('/api/users', methods=['PUT'])
-def update_user():
+@app.route('/api/employee/cloth/query', methods=['POST'])
+def employee_cloth_query_with_pagination():
     try:
         data = request.get_json()
-        user_id = data.get('id')
-        name = data.get('name')
 
-        if not user_id or not name:
-            return jsonify({'error': 'Missing id or name'}), 400
+        allowed_fields = {
+            'cloth_id': 'A.cloth_id',
+            'order_no': 'B.order_no',
+            'order_cloth_name': 'B.order_cloth_name',
+            'order_cloth_color': 'B.order_cloth_color',
+            'machine_name': 'C.machine_name',
+        }
+        allowed_date_range_fields = {
+            'add_time': 'A.add_time',
+        }
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
-        # 执行更新语句
-        cursor.execute("UPDATE test_table SET name = %s WHERE id = %s", (name, user_id))
-        conn.commit()
-        affected_rows = cursor.rowcount  # 检查是否有修改成功
+        params[:0] = [request.user['user_id']]
 
-        cursor.close()
-        conn.close()
+        # 查询数据
+        query_sql = f"""
+        select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
+        B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
+        C.machine_name, 
+        E.user_name AS add_user_name, 
+        (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight, 
+        A.cloth_order_id, A.cloth_machine_id, A.add_user_id
+        from knit_cloth A
+        left join knit_order B on A.cloth_order_id = B.order_id
+        left join knit_machine C on A.cloth_machine_id = C.machine_id
+        left join sys_user E on E.user_id = %s and A.add_user_id = E.user_id
+        {where_sql}
+        ORDER BY add_time DESC, cloth_id DESC
+        LIMIT %s OFFSET %s
+        """
 
-        if affected_rows == 0:
-            return jsonify({'message': 'No user updated (invalid id?)'}), 404
+        # 查询总条数
+        count_sql = f"""
+        select COUNT(*) as total
+        from knit_cloth A
+        left join knit_order B on A.cloth_order_id = B.order_id
+        left join knit_machine C on A.cloth_machine_id = C.machine_id
+        left join sys_user E on E.user_id = %s and A.add_user_id = E.user_id
+        {where_sql}
+        """
 
-        return jsonify({'message': 'User updated'}), 200
+        total, rows = execute_query_sql(count_sql, query_sql, params)
+
+        return jsonify({
+            "total": total['total'],
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
+
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
 
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-
-
-@app.route('/api/users/delete', methods=['POST'])
-def delete_users():
+@app.route('/api/employee/cloth/add', methods=['POST'])
+def employee_cloth_add():
     try:
         data = request.get_json()
-        ids = data.get('ids')
+        json_data = data.get('json_data')
 
-        if not ids or not isinstance(ids, list):
-            return jsonify({'error': 'Invalid or missing "ids" list'}), 400
+        if not json_data:
+            return jsonify({'error': 'Missing json_data'}), 400
+
+        json_str = json.dumps(json_data, ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 构造 SQL：DELETE FROM table WHERE id IN (%s, %s, ...)
-        format_strings = ','.join(['%s'] * len(ids))
-        sql = f"UPDATE test_table set deleted=1 WHERE id IN ({format_strings})"
-
-        cursor.execute(sql, tuple(ids))
+        cursor.callproc('insert_generic', ['knit_cloth', 'cloth_id', request.user['user_id'], json_str])
         conn.commit()
-        affected_rows = cursor.rowcount
 
         cursor.close()
         conn.close()
 
-        return jsonify({'message': f'Deleted {affected_rows} users'}), 200
+        return jsonify({'message': 'Insert successful'}), 201
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -197,6 +249,57 @@ def delete_users():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
     
+@app.route('/api/employee/cloth/update', methods=['POST'])
+def employee_cloth_update():
+    try:
+        allowed_fields = { 'cloth_order_id', 'cloth_machine_id', 'cloth_origin_weight', 'cloth_weight_correct', 'note' }
+        data = request.get_json()
+        pk_value = data.get('pk_value')
+        json_data = data.get('json_data')
+
+        if not json_data:
+            return jsonify({'error': 'Missing json_data or pk_value'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # 查询用户信息（包括加密后的密码）
+        sql = "SELECT TIMESTAMPDIFF(SECOND, add_time, NOW()) AS delay_time, add_user_id FROM knit_cloth WHERE cloth_id = %s"
+        cursor.execute(sql, (pk_value,))
+        searched_cloth = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if searched_cloth['add_user_id'] != request.user['user_id']:
+            return jsonify({'error': 'Not input user'}), 401
+        
+        if searched_cloth['delay_time'] > CLOTH_EXPIRE_SECONDS:
+            return jsonify({'error': 'Time expired'}), 401
+
+        update_data = {}
+
+        for field, value in json_data.items():
+            if field in allowed_fields:
+                update_data[field] = value
+
+        json_str = json.dumps(update_data, ensure_ascii=False)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.callproc('update_generic', ['knit_cloth', 'cloth_id', pk_value, request.user['user_id'], json_str])
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Insert successful'}), 201
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
 
 @app.route('/api/generic/insert', methods=['POST'])
 def insert_generic():
@@ -354,7 +457,7 @@ def get_combobox_values():
 
 
 def normalize_date_range(date_strs):
-    """将前端传入的 ['2025-06-01', '2025-06-18'] 扩展为完整时间段"""
+    # 将前端传入的 ['2025-06-01', '2025-06-18'] 扩展为完整时间段
     if not isinstance(date_strs, list) or len(date_strs) != 2:
         return None, None
     start_date = date_strs[0] + ' 00:00:00'
@@ -371,6 +474,9 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
 
     where_clauses = []
     params = []
+
+    if not page or not page_size:
+            return jsonify({'error': 'Missing page or page_size'}), 400
 
     for field, value in filters.items():
         if field in allowed_fields:
