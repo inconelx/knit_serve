@@ -1,35 +1,36 @@
 import json
 import os
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import bcrypt
-import jwt
 import datetime
-import time
 import MySQLdb
 import base64
-from collections import OrderedDict
+from JWTManager import JWTLoginManager
 
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
+load_dotenv()
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-# CORS(app, expose_headers=["Authorization"])
 
-# 建议放到配置中
-JWT_SECRET = 'knit_secret_key'         # 用于生成token的密钥
-JWT_EXPIRE_SECONDS = min(max(300, 300), 1800)         # token有效秒
+# JWT设置
+JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
+JWT_EXPIRE_SECONDS = min(max(300, int(os.getenv('JWT_EXPIRE_SECONDS', 300))), 1800)    # token有效秒
 
-MAX_LOGINS = min(max(1, 4), 16)
-
-CLOTH_EXPIRE_SECONDS = min(max(300, 900), 1800)
+# 其他设置
+MAX_LOGINS = min(max(1, int(os.getenv('MAX_LOGINS', 8))), 16)
+MAX_PRE_USER = min(max(1, int(os.getenv('MAX_PRE_USER', 1))), 16)
+EMPLOYEE_CLOTH_EXPIRE_SECONDS = min(max(300, int(os.getenv('EMPLOYEE_CLOTH_EXPIRE_SECONDS', 600))), 1800)    #超出秒数后员工不可修改提交数据
 
 # 配置 MySQL 连接
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '896784921'
-app.config['MYSQL_DB'] = 'knittest'
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 PRIVATE_KEY = None
 PUBLIC_KEY_STR = None
@@ -44,71 +45,7 @@ def get_db_connection():
         charset='utf8mb4'
     )
 
-class SimpleJWTManager:
-    def __init__(self, secret_key, expire_seconds, max_users):
-        self.secret_key = secret_key
-        self.expire_seconds = expire_seconds
-        self.max_users = max_users
-        # OrderedDict: { user_id: issued_at_timestamp }
-        self.token_store = OrderedDict()
-
-    def _now(self):
-        return time.time()  # 当前 UTC 时间戳（float）
-
-    def _is_expired(self, issued_at_ts):
-        return self._now() - issued_at_ts > self.expire_seconds
-
-    def _clean_expired_users(self):
-        expired_users = []
-        for user_id, issued_at in list(self.token_store.items()):
-            if self._is_expired(issued_at):
-                expired_users.append(user_id)
-        for user_id in expired_users:
-            self.token_store.pop(user_id, None)
-
-    def generate_token(self, user_id):
-        self._clean_expired_users()
-        now_ts = self._now()
-
-        if user_id in self.token_store:
-            self.token_store.move_to_end(user_id)
-            self.token_store[user_id] = now_ts
-        else:
-            if len(self.token_store) >= self.max_users:
-                return None, "Max login users reached, try later."
-            self.token_store[user_id] = now_ts
-
-        payload = {
-            'user_id': user_id,
-            'iat': now_ts  # float 时间戳
-        }
-        token = jwt.encode(payload, self.secret_key, algorithm='HS256')
-        return token, None
-
-    def verify_token(self, token):
-        try:
-            payload = jwt.decode(token, self.secret_key, algorithms=['HS256'])
-            user_id = payload.get('user_id')
-            token_iat = float(payload.get('iat', 0))
-
-            stored_iat = self.token_store.get(user_id)
-            if not stored_iat:
-                return False, 'User not logged in or expired'
-
-            if token_iat != stored_iat:
-                return False, 'Token is not the latest'
-            if self._is_expired(stored_iat):
-                self.token_store.pop(user_id, None)
-                return False, 'Token expired'
-
-            return True, user_id
-        except jwt.InvalidTokenError:
-            return False, 'Invalid token'
-    
-    def uesr_logout(self, user_id):
-        return self.token_store.pop(user_id, None) is not None
-
-jwt_manager = SimpleJWTManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_LOGINS)
+jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_LOGINS, MAX_PRE_USER)
 
 @app.before_request
 def check_login_token():
@@ -144,6 +81,7 @@ def check_login_token():
         
         if int.from_bytes(user['is_admin'], 'big') == 0:
             if int.from_bytes(user['is_locked'], 'big') == 1:
+                jwt_manager.logout_user(result)
                 return jsonify({'error': 'User has been locked'}), 401
             if request.path not in employee_paths:
                 return jsonify({'error': 'Insufficient permissions'}), 400
@@ -346,7 +284,7 @@ def employee_cloth_update():
         if searched_cloth['add_user_id'] != request.user['user_id']:
             return jsonify({'error': 'Not input user'}), 400
         
-        if searched_cloth['delay_time'] > CLOTH_EXPIRE_SECONDS:
+        if searched_cloth['delay_time'] > EMPLOYEE_CLOTH_EXPIRE_SECONDS:
             return jsonify({'error': 'Time expired'}), 400
 
         update_data = {}
@@ -983,7 +921,8 @@ def login():
 
         if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
             if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-                return jsonify({'error': 'user has been locked'}), 401
+                jwt_manager.logout_user(user['user_id'])
+                return jsonify({'error': 'User has been locked'}), 401
             # 密码匹配
 
             token, error = jwt_manager.generate_token(user['user_id'])
@@ -1011,7 +950,7 @@ def login():
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    if jwt_manager.logout(request.user['user_id']):
+    if jwt_manager.logout_token(request.cookies.get('token')):
         resp = make_response(jsonify({'message': 'Logged out successfully'}))
         resp.set_cookie('token', '', max_age = 0, httponly = True, secure = True, samesite = 'Strict')
         return resp, 200
@@ -1030,25 +969,23 @@ def check_login():
 
 @app.route('/api/refresh-token', methods=['POST'])
 def refresh_token():
-    # 重新生成 token
-
-    token, error = jwt_manager.generate_token(request.user['user_id'])
-    if not token:
-        return jsonify({'error': error}), 403
-
-    resp = make_response(jsonify({
-        'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
-        'expires_seconds': JWT_EXPIRE_SECONDS,
-        'user_name': request.user['user_name'],
-    }))
-    resp.set_cookie(
-        'token',
-        value = token,
-        httponly = True,
-        secure = True,       # 生产环境建议打开，仅允许 HTTPS
-        samesite = 'Strict', # 防止 CSRF
-    )
-    return resp, 201
+    new_token, err = jwt_manager.refresh_token(request.cookies.get('token'))
+    if new_token:
+        resp = make_response(jsonify({
+            'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
+            'expires_seconds': JWT_EXPIRE_SECONDS,
+            'user_name': request.user['user_name'],
+        }))
+        resp.set_cookie(
+            'token',
+            value = new_token,
+            httponly = True,
+            secure = True,       # 生产环境建议打开，仅允许 HTTPS
+            samesite = 'Strict', # 防止 CSRF
+        )
+        return resp, 201
+    else:
+        return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
     # print(bcrypt.hashpw('19857577632'.encode('utf-8'), bcrypt.gensalt()))
