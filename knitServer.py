@@ -495,7 +495,7 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
                 where_clauses.append(f"{allowed_fields[field]} IS NOT NULL")
             elif value is False:
                 where_clauses.append(f"{allowed_fields[field]} IS NULL")
-            elif isinstance(value, str):
+            elif isinstance(value, (str, int, float)):
                 if field in fuzzy_fields:
                     where_clauses.append(f"{allowed_fields[field]} LIKE %s")
                     params.append(f"%{value.replace('%', r'\%')}%")
@@ -578,7 +578,6 @@ def query_company_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/machine/query', methods=['POST'])
 def query_machine_with_pagination():
@@ -800,6 +799,51 @@ def query_delivery_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500       
+
+@app.route('/api/user/query', methods=['POST'])
+def query_user_with_pagination():
+    try:
+        data = request.get_json()
+
+        allowed_fields = {
+            'user_id': 'user_id',
+            'user_name': 'user_name',
+            'real_name': 'real_name',
+            'user_status': '(is_locked + 1) * (1 - is_admin)',
+        }
+        allowed_date_range_fields = {
+            'add_time': 'add_time'
+        }
+
+        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+
+        # 查询数据
+        query_sql = f"""
+        SELECT user_id, user_name, real_name, (is_locked + 1) * (1 - is_admin) AS user_status, add_time, edit_time, note
+        FROM sys_user
+        {where_sql}
+        ORDER BY add_time DESC
+        LIMIT %s OFFSET %s
+        """
+
+        # 查询总条数
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM sys_user
+        {where_sql}
+        """
+
+        total, rows = execute_query_sql(count_sql, query_sql, params)
+
+        return jsonify({
+            "total": total['total'],
+            "page": page,
+            "page_size": page_size,
+            "records": rows
+        }), 200
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/machine/search', methods=['POST'])
 def machine_search():
