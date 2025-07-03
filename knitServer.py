@@ -51,7 +51,15 @@ jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_LOGINS, MAX_PR
 def check_login_token():
     # 排除登录接口和其他公开接口
     open_paths = {'/api/login', '/api/public_key'}
-    employee_paths = {'/api/employee/cloth/add', '/api/employee/cloth/query', '/api/employee/cloth/update'}
+    employee_paths = {
+        '/api/logout',
+        '/api/check-login',
+        '/api/refresh-token',
+        '/api/combobox',
+        '/api/employee/cloth/add',
+        '/api/employee/cloth/query',
+        '/api/employee/cloth/update'
+    }
     if request.path in open_paths:
         return  # 跳过校验
     if request.method == 'OPTIONS':
@@ -70,7 +78,7 @@ def check_login_token():
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
         # 查询用户信息（包括加密后的密码）
-        sql = "SELECT user_name, is_admin, is_locked FROM sys_user WHERE user_id = %s"
+        sql = "SELECT user_id, user_name, is_admin, is_locked FROM sys_user WHERE user_id = %s"
         cursor.execute(sql, (result,))
         user = cursor.fetchone()
         cursor.close()
@@ -86,7 +94,7 @@ def check_login_token():
             if request.path not in employee_paths:
                 return jsonify({'error': 'Insufficient permissions'}), 400
 
-        request.user = { 'user_id': result, 'user_name': user['user_name'] }
+        request.user = user
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
@@ -284,7 +292,7 @@ def employee_cloth_update():
         if searched_cloth['add_user_id'] != request.user['user_id']:
             return jsonify({'error': 'Not input user'}), 400
         
-        if searched_cloth['delay_time'] > EMPLOYEE_CLOTH_EXPIRE_SECONDS:
+        if int.from_bytes(request.user['is_admin'], 'big') == 0 and searched_cloth['delay_time'] > EMPLOYEE_CLOTH_EXPIRE_SECONDS:
             return jsonify({'error': 'Time expired'}), 400
 
         update_data = {}
@@ -963,12 +971,12 @@ def login():
         cursor.close()
         conn.close()
 
+        if user and int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
+            jwt_manager.logout_user(user['user_id'])
+            return jsonify({'error': 'User has been locked'}), 401
+        
         if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
-            if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-                jwt_manager.logout_user(user['user_id'])
-                return jsonify({'error': 'User has been locked'}), 401
             # 密码匹配
-
             token, error = jwt_manager.generate_token(user['user_id'])
             if not token:
                 return jsonify({'error': error}), 403
@@ -1032,7 +1040,7 @@ def refresh_token():
         return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
-    # print(bcrypt.hashpw('19857577632'.encode('utf-8'), bcrypt.gensalt()))
+    # print(bcrypt.hashpw(''.encode('utf-8'), bcrypt.gensalt()))
     load_or_generate_keys()
     app.run(debug=True)
 #    app.run(ssl_context=('cert.pem', 'key.pem'), debug=True)
