@@ -1,10 +1,9 @@
 import threading
 import time
 import uuid
-from collections import OrderedDict
-from sortedcontainers import SortedDict
 import jwt
 
+#dict和set保持插入顺序才能正常工作
 class JWTLoginManager:
     def __init__(self, secret_key, expire_seconds, max_logins, max_per_user):
         self.secret_key = secret_key
@@ -12,8 +11,8 @@ class JWTLoginManager:
         self.max_logins = max_logins
         self.max_per_user = max_per_user
 
-        self.login_store = OrderedDict()  # jti -> (user_id, issued_at timestamp)
-        self.index_user = {}           # user_id -> set of jti
+        self.login_store = {}       # jti -> (user_id, issued_at timestamp)
+        self.index_user = {}       # user_id -> set of jti
         self._lock = threading.Lock()
 
     # ----------------- 私有方法 -----------------
@@ -27,18 +26,14 @@ class JWTLoginManager:
             return
         user_id, _ = info
         if user_id in self.index_user:
-            self.index_user[user_id].discard(jti)
+            self.index_user[user_id].pop(jti, None)
             if not self.index_user[user_id]:
                 self.index_user.pop(user_id)
 
     def _remove_oldest_token_of_user(self, user_id):
         if user_id not in self.index_user or not self.index_user[user_id]:
             return False
-        user_jtis = self.index_user[user_id]
-        user_tokens = [(jti, self.login_store[jti][1]) for jti in user_jtis if jti in self.login_store]
-        if not user_tokens:
-            return False
-        oldest_jti = sorted(user_tokens, key=lambda x: x[1])[0][0]
+        oldest_jti = next(iter(self.index_user[user_id]))
         self._remove_token_entry(oldest_jti)
         return True
 
@@ -57,7 +52,7 @@ class JWTLoginManager:
         issued_at = time.monotonic()
         token = jwt.encode({ 'jti': jti }, self.secret_key, algorithm='HS256')
         self.login_store[jti] = (user_id, issued_at)
-        self.index_user.setdefault(user_id, set()).add(jti)
+        self.index_user.setdefault(user_id, {})[jti] = None
         return token
 
     def _extract_valid_token_info(self, token):

@@ -15,7 +15,8 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+# CORS(app)
+CORS(app, origins=['http://localhost:5173', 'http://192.168.0.102:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
@@ -65,7 +66,7 @@ def check_login_token():
     if request.method == 'OPTIONS':
         return  # 预检请求直接放行
     # 校验 token
-    token = request.cookies.get('token')
+    token = request.headers.get('Authorization')
     if not token:
         return jsonify({'error': 'Missing token'}), 401
     
@@ -981,19 +982,12 @@ def login():
             if not token:
                 return jsonify({'error': error}), 403
             
-            resp = make_response(jsonify({
+            return jsonify({
+                'token': token,
                 'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
                 'expires_seconds': JWT_EXPIRE_SECONDS,
                 'user_name': user['user_name'],
-            }))
-            resp.set_cookie(
-                'token',
-                value = token,
-                httponly = True,
-                secure = True,       # 生产环境建议打开，仅允许 HTTPS
-                samesite = 'Strict', # 防止 CSRF
-            )
-            return resp, 201
+            }), 201
         else:
             return jsonify({'error': 'Invalid username or password'}), 401
 
@@ -1002,10 +996,8 @@ def login():
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    if jwt_manager.logout_token(request.cookies.get('token')):
-        resp = make_response(jsonify({'message': 'Logged out successfully'}))
-        resp.set_cookie('token', '', max_age = 0, httponly = True, secure = True, samesite = 'Strict')
-        return resp, 200
+    if jwt_manager.logout_token(request.headers.get('Authorization')):
+        return jsonify({'message': 'Logged out successfully'}), 200
     else:
         return jsonify({'error': 'User not logged in'}), 400
 
@@ -1021,26 +1013,19 @@ def check_login():
 
 @app.route('/api/refresh-token', methods=['POST'])
 def refresh_token():
-    new_token, err = jwt_manager.refresh_token(request.cookies.get('token'))
+    new_token, err = jwt_manager.refresh_token(request.headers.get('Authorization'))
     if new_token:
-        resp = make_response(jsonify({
+        return jsonify({
+            'token': new_token,
             'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
             'expires_seconds': JWT_EXPIRE_SECONDS,
             'user_name': request.user['user_name'],
-        }))
-        resp.set_cookie(
-            'token',
-            value = new_token,
-            httponly = True,
-            secure = True,       # 生产环境建议打开，仅允许 HTTPS
-            samesite = 'Strict', # 防止 CSRF
-        )
-        return resp, 201
+        }), 201
     else:
         return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
     # print(bcrypt.hashpw(''.encode('utf-8'), bcrypt.gensalt()))
     load_or_generate_keys()
-    app.run(debug=True)
-#    app.run(ssl_context=('cert.pem', 'key.pem'), debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+    # app.run(host='0.0.0.0', port=5000, ssl_context='adhoc', debug=True)
