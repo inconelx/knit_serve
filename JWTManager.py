@@ -3,13 +3,13 @@ import time
 import uuid
 import jwt
 
-#dict和set保持插入顺序才能正常工作
+#dict保持插入顺序才能正常工作
 class JWTLoginManager:
-    def __init__(self, secret_key, expire_seconds, max_logins, max_per_user):
+    def __init__(self, secret_key, expire_seconds, max_users, max_user_logins):
         self.secret_key = secret_key
         self.expire_seconds = expire_seconds
-        self.max_logins = max_logins
-        self.max_per_user = max_per_user
+        self.max_users = max_users
+        self.max_user_logins = max_user_logins
 
         self.login_store = {}       # jti -> (user_id, issued_at timestamp)
         self.index_user = {}       # user_id -> set of jti
@@ -77,16 +77,16 @@ class JWTLoginManager:
 
     def generate_token(self, user_id):
         with self._lock:
-            if user_id in self.index_user and len(self.index_user[user_id]) >= self.max_per_user:
+            self._clean_expired()
+
+            if user_id not in self.index_user and len(self.index_user) >= self.max_users:
+                return None, "Global max user limit reached"
+            
+            if user_id in self.index_user and len(self.index_user[user_id]) >= self.max_user_logins:
                 removed = self._remove_oldest_token_of_user(user_id)
                 if not removed:
                     return None, "User max login limit reached"
-
-            if len(self.login_store) >= self.max_logins:
-                self._clean_expired()
-                if len(self.login_store) >= self.max_logins:
-                    return None, "Global max login limit reached"
-
+                
             return self._add_token_for_user(user_id), None
 
     def verify_token(self, token):

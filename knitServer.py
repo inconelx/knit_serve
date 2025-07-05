@@ -16,15 +16,15 @@ load_dotenv()
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, origins=['http://localhost:5173', 'http://192.168.0.102:5173'])
+CORS(app, origins=['https://localhost:5173', 'https://192.168.0.103:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
 JWT_EXPIRE_SECONDS = min(max(300, int(os.getenv('JWT_EXPIRE_SECONDS', 300))), 1800)    # token有效秒
 
 # 其他设置
-MAX_LOGINS = min(max(1, int(os.getenv('MAX_LOGINS', 8))), 16)
-MAX_PRE_USER = min(max(1, int(os.getenv('MAX_PRE_USER', 1))), 16)
+MAX_USERS = min(max(1, int(os.getenv('MAX_USERS', 8))), 16)
+MAX_USER_LOGINS = min(max(1, int(os.getenv('MAX_USER_LOGINS', 1))), 4)
 EMPLOYEE_CLOTH_EXPIRE_SECONDS = min(max(300, int(os.getenv('EMPLOYEE_CLOTH_EXPIRE_SECONDS', 600))), 1800)    #超出秒数后员工不可修改提交数据
 
 # 配置 MySQL 连接
@@ -46,7 +46,7 @@ def get_db_connection():
         charset='utf8mb4'
     )
 
-jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_LOGINS, MAX_PRE_USER)
+jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
 
 @app.before_request
 def check_login_token():
@@ -415,6 +415,38 @@ def update_batch_generic():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
+@app.route('/api/generic/update_time_batch', methods=['POST'])
+def update_time_batch_generic():
+    try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        pk_name = data.get('pk_name')
+        pk_values = data.get('pk_values')
+        time_field_name = data.get('time_field_name')
+
+        if not all([table_name, pk_name, time_field_name, pk_values]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+
+        pk_values_json = json.dumps(pk_values, ensure_ascii=False)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.callproc('update_time_generic_batch', [table_name, pk_name, pk_values_json, request.user['user_id'], time_field_name])
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Update successful'}), 201
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
+
+
 @app.route('/api/generic/delete', methods=['POST'])
 def delete_generic():
     try:
@@ -703,7 +735,7 @@ def query_cloth_with_pagination():
         }
         allowed_date_range_fields = {
             'add_time': 'A.add_time',
-            'delivery_time': 'D.add_time'
+            'delivery_time': 'IF(D.delivery_no IS NULL, NULL, A.cloth_delivery_time)'
         }
 
         where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
@@ -713,9 +745,10 @@ def query_cloth_with_pagination():
         select A.cloth_id, A.cloth_origin_weight, A.cloth_weight_correct, A.add_time, A.edit_time, A.note, 
         B.order_no, B.order_cloth_name, B.order_cloth_color, B.order_cloth_add, 
         C.machine_name, 
-        D.delivery_no, D.add_time AS delivery_time, 
+        D.delivery_no,
         E.user_name AS add_user_name, 
         IF(D.delivery_no IS NULL, 0, 1) AS delivery_status,
+        IF(D.delivery_no IS NULL, NULL, A.cloth_delivery_time) AS delivery_time,
         (A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight, 
         A.cloth_order_id, A.cloth_machine_id, A.cloth_delivery_id, A.add_user_id
         from knit_cloth A
@@ -1027,5 +1060,5 @@ def refresh_token():
 if __name__ == '__main__':
     # print(bcrypt.hashpw(''.encode('utf-8'), bcrypt.gensalt()))
     load_or_generate_keys()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=("certificate.pem", "private_key.pem"))
     # app.run(host='0.0.0.0', port=5000, ssl_context='adhoc', debug=True)
