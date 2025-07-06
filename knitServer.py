@@ -119,69 +119,6 @@ def decrypt_password(encrypted_b64: str) -> str:
         padding=padding.PKCS1v15())
     return decrypted_bytes.decode('utf-8')
 
-@app.route('/api/user/add', methods=['POST'])
-def user_add():
-    try:
-        data = request.get_json()
-        json_data = data.get('json_data')
-
-        if not json_data:
-            return jsonify({'error': 'Missing json_data'}), 400
-
-        json_data['user_password'] = decrypt_password(json_data['user_password_encrypted'])
-        json_data.pop('user_password_encrypted', None)
-
-        json_str = json.dumps(json_data, ensure_ascii=False)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.callproc('insert_generic', ['sys_user', 'user_id', request.user['user_id'], json_str])
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({'message': 'Insert successful'}), 201
-
-    except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-
-@app.route('/api/user/update', methods=['POST'])
-def user_update():
-    try:
-        data = request.get_json()
-        pk_value = data.get('pk_value')
-        json_data = data.get('json_data')
-
-        if not json_data:
-            return jsonify({'error': 'Missing json_data or pk_value'}), 400
-
-        json_data['user_password'] = decrypt_password(json_data['user_password_encrypted'])
-        json_data.pop('user_password_encrypted', None)
-
-        json_str = json.dumps(json_data, ensure_ascii=False)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.callproc('update_generic', ['sys_user', 'user_id', pk_value, request.user['user_id'], json_str])
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({'message': 'Insert successful'}), 201
-
-    except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-
 @app.route('/api/employee/cloth/query', methods=['POST'])
 def employee_cloth_query_with_pagination():
     try:
@@ -255,7 +192,7 @@ def employee_cloth_add():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.callproc('insert_generic', ['knit_cloth', 'cloth_id', request.user['user_id'], json_str])
+        cursor.callproc('super_insert', ['knit_cloth', request.user['user_id'], json_str])
         conn.commit()
 
         cursor.close()
@@ -277,13 +214,12 @@ def employee_cloth_update():
         pk_value = data.get('pk_value')
         json_data = data.get('json_data')
 
-        if not json_data:
+        if not json_data or not pk_value:
             return jsonify({'error': 'Missing json_data or pk_value'}), 400
 
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
-        # 查询用户信息（包括加密后的密码）
         sql = "SELECT TIMESTAMPDIFF(SECOND, add_time, NOW()) AS delay_time, add_user_id FROM knit_cloth WHERE cloth_id = %s"
         cursor.execute(sql, (pk_value,))
         searched_cloth = cursor.fetchone()
@@ -303,11 +239,12 @@ def employee_cloth_update():
                 update_data[field] = value
 
         json_str = json.dumps(update_data, ensure_ascii=False)
+        pk_values_json = json.dumps([pk_value], ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.callproc('update_generic', ['knit_cloth', 'cloth_id', pk_value, request.user['user_id'], json_str])
+        cursor.callproc('super_update', ['knit_cloth', request.user['user_id'], pk_values_json, json_str])
         conn.commit()
 
         cursor.close()
@@ -321,15 +258,68 @@ def employee_cloth_update():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
 
+@app.route('/api/delivery/cloth/update', methods=['POST'])
+def delivery_cloth_update():
+    try:
+        data = request.get_json()
+        pk_values = data.get('pk_values')
+        cloth_operate = data.get('cloth_operate')
+        delivery_id = data.get('delivery_id')
+
+        if not cloth_operate or not pk_values or not delivery_id:
+            return jsonify({'error': 'Missing required parameters', 'errorType': 0}), 400
+
+        unique_pk_values = list(set(pk_values))
+        placeholders = ','.join(['%s'] * len(unique_pk_values))
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        sql = f"""SELECT cloth_delivery_id FROM knit_cloth WHERE cloth_id IN ({placeholders})"""
+        cursor.execute(sql, unique_pk_values)
+        searched_clothes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if len(searched_clothes) != len(unique_pk_values):
+            return jsonify({'error': 'cloth_id not found or incorrect', 'errorType': 1}), 400
+
+        for row in searched_clothes:
+            if row['cloth_delivery_id'] is not None and cloth_operate == 'out':
+                return jsonify({'error': 'delivery cloth has been out', 'errorType': 2}), 400
+            if row['cloth_delivery_id'] != delivery_id and cloth_operate == 'cancel':
+                return jsonify({'error': 'can not cancel other delivery cloth', 'errorType': 3}), 400
+
+        if cloth_operate == 'out':
+            json_str = json.dumps({ 'cloth_delivery_id': delivery_id, 'cloth_delivery_time': 0 }, ensure_ascii=False)
+        elif cloth_operate == 'cancel':
+            json_str = json.dumps({ 'cloth_delivery_id': None, 'cloth_delivery_time': None }, ensure_ascii=False)
+        pk_values_json = json.dumps(pk_values, ensure_ascii=False)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.callproc('super_update', ['knit_cloth', request.user['user_id'], pk_values_json, json_str])
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Update successful'}), 201
+
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
+
 @app.route('/api/generic/insert', methods=['POST'])
 def insert_generic():
     try:
         data = request.get_json()
         table_name = data.get('table_name')
-        pk_name = data.get('pk_name')
         json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
 
-        if not table_name or not pk_name or not json_data:
+        if not table_name or not json_data:
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
@@ -337,7 +327,7 @@ def insert_generic():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.callproc('insert_generic', [table_name, pk_name, request.user['user_id'], json_str])
+        cursor.callproc('super_insert', [table_name, request.user['user_id'], json_str])
         conn.commit()
 
         cursor.close()
@@ -357,42 +347,10 @@ def update_generic():
     try:
         data = request.get_json()
         table_name = data.get('table_name')
-        pk_name = data.get('pk_name')
-        pk_value = data.get('pk_value')
-        json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
-
-        if not all([table_name, pk_name, json_data, pk_value]):
-            return jsonify({'error': 'Missing required parameters'}), 400
-
-        json_str = json.dumps(json_data, ensure_ascii=False)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.callproc('update_generic', [table_name, pk_name, pk_value, request.user['user_id'], json_str])
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({'message': 'Update successful'}), 201
-
-    except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-    
-@app.route('/api/generic/update_batch', methods=['POST'])
-def update_batch_generic():
-    try:
-        data = request.get_json()
-        table_name = data.get('table_name')
-        pk_name = data.get('pk_name')
         pk_values = data.get('pk_values')
         json_data = data.get('json_data')  # 这里假设客户端传的是一个 dict
 
-        if not all([table_name, pk_name, json_data, pk_values]):
+        if not all([table_name, json_data, pk_values]):
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
@@ -401,7 +359,7 @@ def update_batch_generic():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.callproc('update_generic_batch', [table_name, pk_name, pk_values_json, request.user['user_id'], json_str])
+        cursor.callproc('super_update', [table_name, request.user['user_id'], pk_values_json, json_str])
         conn.commit()
 
         cursor.close()
@@ -414,57 +372,24 @@ def update_batch_generic():
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-
-@app.route('/api/generic/update_time_batch', methods=['POST'])
-def update_time_batch_generic():
-    try:
-        data = request.get_json()
-        table_name = data.get('table_name')
-        pk_name = data.get('pk_name')
-        pk_values = data.get('pk_values')
-        time_field_name = data.get('time_field_name')
-
-        if not all([table_name, pk_name, time_field_name, pk_values]):
-            return jsonify({'error': 'Missing required parameters'}), 400
-
-        pk_values_json = json.dumps(pk_values, ensure_ascii=False)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.callproc('update_time_generic_batch', [table_name, pk_name, pk_values_json, request.user['user_id'], time_field_name])
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({'message': 'Update successful'}), 201
-
-    except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500
-
-    except Exception as e:
-        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
-
 
 @app.route('/api/generic/delete', methods=['POST'])
 def delete_generic():
     try:
         data = request.get_json()
         table_name = data.get('table_name')
-        pk_name = data.get('pk_name')
         pk_values = data.get('pk_values')  # 期望是列表或数组
 
-        if not all([table_name, pk_name, pk_values]):
+        if not all([table_name, pk_values]):
             return jsonify({'error': 'Missing required parameters'}), 400
 
-        pk_values_json = json.dumps(pk_values)
+        pk_values_json = json.dumps(pk_values, ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # 调用存储过程
-        cursor.callproc('delete_generic', (table_name, pk_name, request.user['user_id'], pk_values_json))
+        cursor.callproc('super_delete', [table_name, request.user['user_id'], pk_values_json])
         conn.commit()
 
         affected_rows = cursor.rowcount  # 受影响行数，有时可能不准确，视 MySQL 版本
