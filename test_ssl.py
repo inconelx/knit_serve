@@ -2,13 +2,15 @@ import ipaddress
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 import datetime
 
-# 生成 RSA 私钥
-private_key = rsa.generate_private_key(
-    public_exponent=65537,
-    key_size=2048,
+# 服务器IP地址
+server_ip = u"192.168.0.103"
+
+# 生成 ECC 私钥，曲线选 SECP256R1（NIST P-256）
+private_key = ec.generate_private_key(
+    ec.SECP256R1()
 )
 
 # 证书主题
@@ -17,11 +19,8 @@ subject = issuer = x509.Name([
     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"Beijing"),
     x509.NameAttribute(NameOID.LOCALITY_NAME, u"Beijing"),
     x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Organization"),
-    x509.NameAttribute(NameOID.COMMON_NAME, u"192.168.0.103"),  # 这里写你的服务器IP
+    x509.NameAttribute(NameOID.COMMON_NAME, server_ip),  # IP地址
 ])
-
-# 服务器IP地址
-server_ip = ipaddress.IPv4Address("192.168.0.103")  # 换成你的服务器IP
 
 # 构造证书
 cert = (
@@ -33,7 +32,7 @@ cert = (
     .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
     .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365))
     .add_extension(
-        x509.SubjectAlternativeName([x509.IPAddress(server_ip)]),  # IP地址形式
+        x509.SubjectAlternativeName([x509.IPAddress(ipaddress.IPv4Address(server_ip))]),  # IP地址形式
         critical=False,
     )
     .sign(private_key, hashes.SHA256())
@@ -44,7 +43,7 @@ with open("./private_key.pem", "wb") as f:
     f.write(
         private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            format=serialization.PrivateFormat.PKCS8,  # ECC 推荐用 PKCS8 格式
             encryption_algorithm=serialization.NoEncryption(),
         )
     )
@@ -56,4 +55,4 @@ with open("./certificate.pem", "wb") as f:
 with open("./certificate.crt", "wb") as f:
     f.write(cert.public_bytes(serialization.Encoding.PEM))
 
-print("生成针对IP访问的自签名证书完成！")
+print("生成针对IP访问的ECC自签名证书完成！")
