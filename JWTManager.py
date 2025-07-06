@@ -1,5 +1,5 @@
 import threading
-import time
+import datetime
 import uuid
 import jwt
 
@@ -17,8 +17,11 @@ class JWTLoginManager:
 
     # ----------------- 私有方法 -----------------
 
+    def _current_second(self):
+        return int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+
     def _is_expired(self, issued_at):
-        return time.monotonic() - issued_at > self.expire_seconds
+        return self._current_second() - issued_at > self.expire_seconds
 
     def _remove_token_entry(self, jti):
         info = self.login_store.pop(jti, None)
@@ -49,7 +52,7 @@ class JWTLoginManager:
 
     def _add_token_for_user(self, user_id):
         jti = str(uuid.uuid4())
-        issued_at = time.monotonic()
+        issued_at = self._current_second()
         token = jwt.encode({ 'jti': jti }, self.secret_key, algorithm='HS256')
         self.login_store[jti] = (user_id, issued_at)
         self.index_user.setdefault(user_id, {})[jti] = None

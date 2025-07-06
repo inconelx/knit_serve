@@ -942,7 +942,6 @@ def login():
             
             return jsonify({
                 'token': token,
-                'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
                 'expires_seconds': JWT_EXPIRE_SECONDS,
                 'user_name': user['user_name'],
             }), 201
@@ -975,7 +974,6 @@ def refresh_token():
     if new_token:
         return jsonify({
             'token': new_token,
-            'expires_at': int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + JWT_EXPIRE_SECONDS,
             'expires_seconds': JWT_EXPIRE_SECONDS,
             'user_name': request.user['user_name'],
         }), 201
