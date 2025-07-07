@@ -2,6 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, make_response
+from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import bcrypt
 import datetime
@@ -16,7 +17,7 @@ load_dotenv()
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, origins=['https://localhost:5173', 'https://192.168.0.103:5173'])
+CORS(app, origins=['https://localhost:5173', 'http://localhost:5173', 'https://192.168.0.105:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
@@ -47,6 +48,36 @@ def get_db_connection():
     )
 
 jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
+
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# 保存打印端连接状态
+printer_sid = None
+
+@socketio.on('connect')
+def on_connect():
+    global printer_sid
+    printer_sid = request.sid
+    print(f'Printer connected: {printer_sid}')
+    emit('server_response', {'message': 'Connected to server'})
+
+@socketio.on('disconnect')
+def on_disconnect():
+    global printer_sid
+    print(f'Printer disconnected: {request.sid}')
+    if request.sid == printer_sid:
+        printer_sid = None
+
+# 服务器主动发送打印任务接口（比如被其他系统调用）
+@app.route('/api/send_print', methods=['POST'])
+def send_print():
+    global printer_sid
+    data = request.json
+    if not printer_sid:
+        return {'status': 'error', 'message': 'Printer not connected'}, 400
+
+    socketio.emit('print_task', data, room=printer_sid)
+    return {'status': 'success'}
 
 @app.before_request
 def check_login_token():
@@ -914,7 +945,7 @@ def login():
     try:
         data = request.get_json()
         username = data.get('user_name')
-        password = decrypt_password(data.get('user_password_encrypted'))
+        password = decrypt_password(data.get('user_password'))
 
         if not username or not password:
             return jsonify({'error': 'Username and password are required'}), 400
@@ -981,7 +1012,6 @@ def refresh_token():
         return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
-    # print(bcrypt.hashpw(''.encode('utf-8'), bcrypt.gensalt()))
     load_or_generate_keys()
-    app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=("certificate.pem", "private_key.pem"))
-    # app.run(host='0.0.0.0', port=5000, ssl_context='adhoc', debug=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))

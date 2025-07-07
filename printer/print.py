@@ -1,5 +1,5 @@
 import win32com.client
-from printer.generateExcel import generateExcel
+from generateExcel import generateExcel
 import os
 
 
