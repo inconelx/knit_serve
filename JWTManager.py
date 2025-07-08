@@ -133,3 +133,87 @@ class JWTLoginManager:
             for jti in list(self.index_user[user_id]):
                 self._remove_token_entry(jti)
             return True, "User logged out"
+        
+class JWTAuthManager:
+    def __init__(self, secret_key, expire_seconds, max_auth):
+        self.secret_key = secret_key
+        self.expire_seconds = expire_seconds
+        self.max_auth = max_auth
+
+        self.auth_store = {}       # jti -> (private_key, issued_at)
+        self._lock = threading.Lock()
+
+    # ----------------- 私有方法 -----------------
+
+    def _current_second(self):
+        return int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+
+    def _is_expired(self, issued_at):
+        return self._current_second() - issued_at > self.expire_seconds
+
+    def _remove_token_entry(self, jti):
+        self.auth_store.pop(jti, None)
+
+    def _clean_expired(self):
+        keys_to_remove = []
+        for jti, (_, issued_at) in self.auth_store.items():
+            if self._is_expired(issued_at):
+                keys_to_remove.append(jti)
+            else:
+                break
+        for jti in keys_to_remove:
+            self._remove_token_entry(jti)
+
+    def _add_token(self, private_key):
+        jti = str(uuid.uuid4())
+        issued_at = self._current_second()
+        token = jwt.encode({ 'jti': jti }, self.secret_key, algorithm='HS256')
+        self.auth_store[jti] = (private_key, issued_at)
+        return token
+
+    def _extract_valid_token_info(self, token):
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=['HS256'])
+            jti = payload.get('jti')
+            if not jti:
+                return None, "Invalid token payload"
+            info = self.auth_store.get(jti)
+            if info is None:
+                return None, "Token not found or already expired"
+            private_key, issued_at = info
+            return {
+                'jti': jti,
+                'private_key': private_key,
+                'issued_at': issued_at
+            }, None
+        except jwt.InvalidTokenError:
+            return None, "Invalid token"
+
+    # ----------------- 公开方法 -----------------
+
+    def generate_token_available(self):
+        with self._lock:
+            self._clean_expired()
+            return len(self.auth_store) < self.max_auth
+
+    def generate_token(self, private_key):
+        with self._lock:
+            self._clean_expired()
+
+            if len(self.auth_store) >= self.max_auth:
+                return None, "Auth max limit reached"
+
+            return self._add_token(private_key), None
+
+    def verify_token(self, token):
+        with self._lock:
+            info, err = self._extract_valid_token_info(token)
+            if not info:
+                return False, err
+            
+            self._remove_token_entry(info['jti'])
+
+            if self._is_expired(info['issued_at']):
+                return False, "Token expired"
+
+            return True, info['private_key']

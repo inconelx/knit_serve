@@ -1,16 +1,18 @@
 import json
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, make_response, session
-from flask_socketio import SocketIO, emit, disconnect
+from flask import Flask, request, jsonify, make_response, Response, stream_with_context
 from flask_cors import CORS
 import bcrypt
 import datetime
 import MySQLdb
 import base64
-from JWTManager import JWTLoginManager
+from JWTManager import JWTLoginManager, JWTAuthManager
 from threading import Timer
 import threading
+import queue
+import uuid
+import jwt
 
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives import serialization, hashes
@@ -19,19 +21,19 @@ load_dotenv()
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, origins=['https://localhost:5173', 'https://192.168.0.104:5173'])
-
-socketio = SocketIO(app, manage_session=True, cors_allowed_origins=['https://localhost:5000', 'https://192.168.0.104:5000', 'https://localhost:5173', 'https://192.168.0.104:5173'])
+CORS(app, origins=['http://localhost:5173', 'http://192.168.0.104:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
-JWT_EXPIRE_SECONDS = min(max(300, int(os.getenv('JWT_EXPIRE_SECONDS', 300))), 1800)    # token有效秒
+JWT_EXPIRE_SECONDS = min(max(300, int(os.getenv('JWT_EXPIRE_SECONDS', 600))), 1800)    # token有效秒
+JWT_AUTH_EXPIRE_SECONDS = min(max(5, int(os.getenv('JWT_AUTH_EXPIRE_SECONDS', 10))), 30)
 
 # 其他设置
+MAX_AUTH = min(max(1, int(os.getenv('MAX_AUTH', 16))), 64)
 MAX_USERS = min(max(1, int(os.getenv('MAX_USERS', 8))), 16)
 MAX_USER_LOGINS = min(max(1, int(os.getenv('MAX_USER_LOGINS', 1))), 4)
 EMPLOYEE_CLOTH_EXPIRE_SECONDS = min(max(300, int(os.getenv('EMPLOYEE_CLOTH_EXPIRE_SECONDS', 600))), 1800)    #超出秒数后员工不可修改提交数据
-MAX_LOGIN_CONNECT = 64
+PRINTER_EXPIRE_SECONDS = min(max(300, int(os.getenv('PRINTER_EXPIRE_SECONDS', 600))), 1800)
 
 # 配置 MySQL 连接
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
@@ -39,16 +41,13 @@ app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
-connected_printer = {
-    "sid": None,
-    "user_id": None
-}
-
 printer_lock = threading.Lock()
+printer_connected = {'jti': None}
 
-pending_auth = {}
+message_queue = queue.Queue()
 
-jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
+jwt_login_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
+jwt_auth_manager = JWTAuthManager(JWT_SECRET, JWT_AUTH_EXPIRE_SECONDS, MAX_AUTH)
 
 # 创建连接
 def get_db_connection():
@@ -63,7 +62,7 @@ def get_db_connection():
 @app.before_request
 def check_login_token():
     # 排除登录接口和其他公开接口
-    open_paths = {'/api/login', '/api/public_key'}
+    open_paths = {'/api/login', '/api/login-before', '/stream', '/api/printer/login'}
     employee_paths = {
         '/api/logout',
         '/api/check-login',
@@ -82,7 +81,7 @@ def check_login_token():
     if not token:
         return jsonify({'error': 'Missing token'}), 401
     
-    valid, result = jwt_manager.verify_token(token)
+    valid, result = jwt_login_manager.verify_token(token)
     if not valid:
         return jsonify({'error': result}), 401
     
@@ -90,7 +89,7 @@ def check_login_token():
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
-        # 查询用户信息（包括加密后的密码）
+        # 查询用户信息
         sql = "SELECT user_id, user_name, is_admin, is_locked FROM sys_user WHERE user_id = %s"
         cursor.execute(sql, (result,))
         user = cursor.fetchone()
@@ -102,7 +101,7 @@ def check_login_token():
         
         if int.from_bytes(user['is_admin'], 'big') == 0:
             if int.from_bytes(user['is_locked'], 'big') == 1:
-                jwt_manager.logout_user(result)
+                jwt_login_manager.logout_user(result)
                 return jsonify({'error': 'User has been locked'}), 401
             if request.path not in employee_paths:
                 return jsonify({'error': 'Insufficient permissions'}), 400
@@ -112,122 +111,122 @@ def check_login_token():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-@socketio.on('connect')
-def on_connect():
-    if len(pending_auth) >= MAX_LOGIN_CONNECT:
-        emit('auth_failed', {'message': '超出最大登录连接，请稍后'})
-        disconnect()
-
-    sid = request.sid
-    private_key, public_key_str = generate_keys()
-    session['auth_private_key'] = private_key
-    emit("auth_public_key", {"key": public_key_str})
-
-    # 启动认证超时定时器（10 秒）
-    timer = Timer(10.0, lambda: kick_unverified_client(sid))
-    timer.start()
-    pending_auth[sid] = timer
-
-def kick_unverified_client(sid):
-    if sid in pending_auth:
-        socketio.emit('auth_failed', {'message': '超时未认证'}, to=sid)
-        disconnect(sid=sid)
-        pending_auth.pop(sid, None)
-
-@socketio.on('auth_request')
-def handle_auth(data):
-    sid = request.sid
-    # 清除认证超时定时器
-    if sid in pending_auth:
-        pending_auth[sid].cancel()
-        pending_auth.pop(sid, None)
-    
-    username = data.get("user_name")
-    password = data.get("user_password")
-    connect_type = data.get("connect_type")
-        
-    with printer_lock:
-        if connect_type == 'printer' and connected_printer['sid'] is not None:
-            emit('auth_failed', {'message': '已有打印机连接'})
-            disconnect()
-            return
-
-    if not username or not password:
-        emit('auth_failed', {'message': '请给出账户和密码'})
-        disconnect()
-        return
-
+@app.route('/api/printer/login', methods=['POST'])
+def printer_login():
     try:
-        password = decrypt_password(password, session['auth_private_key'])
-    except Exception as e:
-        emit('auth_failed', {'message': '密码格式错误'})
-        disconnect()
-        return
-    
-    conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    # 查询用户信息（包括加密后的密码）
-    sql = "SELECT user_id, user_name, user_password, is_admin, is_locked FROM sys_user WHERE user_name = %s"
-    cursor.execute(sql, (username,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
+        with printer_lock:
+            if printer_connected['jti'] is not None:
+                return jsonify({'error': 'already had printer connect'}), 403
+        data = request.get_json()
+        username = data.get('user_name')
+        password = data.get('user_password')
+        auth_token = data.get('auth_token')
 
-    if not user:
-        emit('auth_failed', {'message': '该账户不存在'})
-        disconnect()
-        return
+        if not username or not password or not auth_token:
+            return jsonify({'error': 'Username and password and auth_token are required'}), 400
 
-    if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-        jwt_manager.logout_user(user['user_id'])
-        emit('auth_failed', {'message': '该账户已被封禁'})
-        disconnect()
-        return
-    
-    if bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
-        # 密码匹配
-        if connect_type == 'printer':
+        valid, result = jwt_auth_manager.verify_token(auth_token)
+        if not valid:
+            return jsonify({'error': result}), 401
+
+        password = decrypt_password(password, result)
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        # 查询用户信息（包括加密后的密码）
+        sql = "SELECT user_id, user_name, user_password, is_admin, is_locked FROM sys_user WHERE user_name = %s"
+        cursor.execute(sql, (username,))
+        user = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if user and int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
+            jwt_login_manager.logout_user(user['user_id'])
+            return jsonify({'error': 'User has been locked'}), 401
+        
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
             with printer_lock:
-                if connect_type == 'printer' and connected_printer['sid'] is not None:
-                    emit('auth_failed', {'message': '已有打印机连接'})
-                    disconnect()
-                    return
-                connected_printer['sid'] = sid
-                connected_printer['user_id'] = user['user_id']
-                socketio.emit("auth_success")
-
+                if printer_connected['jti'] is not None:
+                    return jsonify({'error': 'already had printer connect'}), 403
+                return jsonify({'token': printer_generate_token()}), 201
         else:
-            token, error = jwt_manager.generate_token(user['user_id'])
-            if not token:
-                emit('auth_failed', {'message': error})
-                disconnect()
-                return
-            socketio.emit("auth_success", {
-                'token': token,
-                'expires_seconds': JWT_EXPIRE_SECONDS,
-                'user_name': user['user_name']
-            })
-            disconnect()
-    else:
-        emit('auth_failed', {'message': '密码错误'})
-        disconnect()
+            return jsonify({'error': 'Invalid username or password'}), 401
 
-@socketio.on("disconnect")
-def handle_disconnect():
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+def printer_generate_token():
+    jti = str(uuid.uuid4())
+    payload = {
+        "jti": jti,
+        "exp": int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=JWT_AUTH_EXPIRE_SECONDS)).timestamp())
+    }
+    printer_connected['jti'] = jti
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return token
+
+def printer_verify_token(token):
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        jti = payload.get("jti")
+        if jti is None or jti != printer_connected['jti']:
+            return False
+        return True
+    except jwt.ExpiredSignatureError:
+        return False
+    except Exception:
+        return False
+
+@app.route('/stream')
+def stream():
+    token = request.headers.get("Authorization")
+    if not token:
+        return "Missing token", 401
     with printer_lock:
-        if connected_printer['sid'] == request.sid:
-            connected_printer['sid'] = None
-            connected_printer['user_id'] = None
+        if not printer_verify_token(token):
+            return "token expried or wrong", 401
+    def event_stream():
+        last_refresh = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        try:
+            while True:
+                # 优先推送消息队列内容
+                try:
+                    msg = message_queue.get(timeout=15)
+                    yield f"data: {json.dumps(msg)}\n\n"
+                except queue.Empty:
+                    # 队列空时发送心跳
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
 
-# 服务器主动发送打印任务接口（比如被其他系统调用）
-@app.route('/api/send_print', methods=['POST'])
-def send_print():
-    data = request.get_json()
-    if connected_printer['sid'] is None:
-        return {'status': 'error', 'message': 'Printer not connected'}, 400
+                # 定时刷新 token
+                now_second = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+                if now_second - last_refresh > PRINTER_EXPIRE_SECONDS / 2:
+                    with printer_lock:
+                        new_token = printer_generate_token()
+                    yield f"data: {json.dumps({'type': 'token_refresh', 'token': new_token})}\n\n"
+                    last_refresh = now_second
+        finally:
+            with printer_lock:
+                printer_connected['jti'] = None
 
-    socketio.emit('print_task', data, to=connected_printer['sid'])
-    return {'status': 'success'}
+    return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+
+# 普通客户端访问此接口，向管理员发送消息
+@app.route('/api/send-print', methods=['POST'])
+def notify():
+    payload = request.get_json()
+    if not payload:
+        return jsonify({'error': 'no json'}), 400
+
+    # 推送到 SSE 队列
+    message_queue.put({
+        'type': 'notify',
+        'msg': payload.get('msg', '没有消息内容')
+    })
+
+    return jsonify({'status': 'ok', 'pushed': payload})
 
 def generate_keys():
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -1039,17 +1038,40 @@ def company_search():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
 
+@app.route('/api/login-before', methods=['POST'])
+def login_before():
+    try:
+        if jwt_auth_manager.generate_token_available():
+            private_key, public_key_str = generate_keys()
+            token, error = jwt_auth_manager.generate_token(private_key)
+            if not token:
+                return jsonify({'error': error}), 403
+            
+            return jsonify({
+                'token': token,
+                'public_key': public_key_str,
+            }), 201
+        else:
+            return jsonify({'error': 'Auth max limit reached'}), 403
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500   
+
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
         username = data.get('user_name')
         password = data.get('user_password')
+        auth_token = data.get('auth_token')
 
-        if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
+        if not username or not password or not auth_token:
+            return jsonify({'error': 'Username and password and auth_token are required'}), 400
 
-        password = decrypt_password(password)
+        valid, result = jwt_auth_manager.verify_token(auth_token)
+        if not valid:
+            return jsonify({'error': result}), 401
+
+        password = decrypt_password(password, result)
 
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -1063,12 +1085,12 @@ def login():
         conn.close()
 
         if user and int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
-            jwt_manager.logout_user(user['user_id'])
+            jwt_login_manager.logout_user(user['user_id'])
             return jsonify({'error': 'User has been locked'}), 401
         
         if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
             # 密码匹配
-            token, error = jwt_manager.generate_token(user['user_id'])
+            token, error = jwt_login_manager.generate_token(user['user_id'])
             if not token:
                 return jsonify({'error': error}), 403
             
@@ -1085,7 +1107,7 @@ def login():
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    if jwt_manager.logout_token(request.headers.get('Authorization')):
+    if jwt_login_manager.logout_token(request.headers.get('Authorization')):
         return jsonify({'message': 'Logged out successfully'}), 200
     else:
         return jsonify({'error': 'User not logged in'}), 400
@@ -1102,7 +1124,7 @@ def check_login():
 
 @app.route('/api/refresh-token', methods=['POST'])
 def refresh_token():
-    new_token, err = jwt_manager.refresh_token(request.headers.get('Authorization'))
+    new_token, err = jwt_login_manager.refresh_token(request.headers.get('Authorization'))
     if new_token:
         return jsonify({
             'token': new_token,
@@ -1113,6 +1135,5 @@ def refresh_token():
         return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
-    # socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
