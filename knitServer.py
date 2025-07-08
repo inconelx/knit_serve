@@ -42,7 +42,7 @@ app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 printer_lock = threading.Lock()
-printer_connected = {'jti': None}
+printer_connected = {'jti': None, 'connected': False}
 
 message_queue = queue.Queue()
 
@@ -115,7 +115,7 @@ def check_login_token():
 def printer_login():
     try:
         with printer_lock:
-            if printer_connected['jti'] is not None:
+            if printer_connected['connected']:
                 return jsonify({'error': 'already had printer connect'}), 403
         data = request.get_json()
         username = data.get('user_name')
@@ -148,7 +148,7 @@ def printer_login():
         
         if user and bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
             with printer_lock:
-                if printer_connected['jti'] is not None:
+                if printer_connected['connected']:
                     return jsonify({'error': 'already had printer connect'}), 403
                 return jsonify({'token': printer_generate_token()}), 201
         else:
@@ -188,6 +188,8 @@ def stream():
         if not printer_verify_token(token):
             return "token expried or wrong", 401
     def event_stream():
+        with printer_lock:
+            printer_connected['connected'] = True
         last_refresh = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         yield f"data: {json.dumps({'type': 'ping'})}\n\n"
         try:
@@ -210,6 +212,7 @@ def stream():
         finally:
             with printer_lock:
                 printer_connected['jti'] = None
+                printer_connected['connected'] = False
 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
 
