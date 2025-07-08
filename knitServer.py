@@ -1,23 +1,27 @@
 import json
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, make_response
-from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify, make_response, session
+from flask_socketio import SocketIO, emit, disconnect
 from flask_cors import CORS
 import bcrypt
 import datetime
 import MySQLdb
 import base64
 from JWTManager import JWTLoginManager
+from threading import Timer
+import threading
 
-from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives import serialization, hashes
 
 load_dotenv()
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, origins=['https://localhost:5173', 'http://localhost:5173', 'https://192.168.0.105:5173'])
+CORS(app, origins=['https://localhost:5173', 'https://192.168.0.104:5173'])
+
+socketio = SocketIO(app, manage_session=True, cors_allowed_origins=['https://localhost:5000', 'https://192.168.0.104:5000', 'https://localhost:5173', 'https://192.168.0.104:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
@@ -27,6 +31,7 @@ JWT_EXPIRE_SECONDS = min(max(300, int(os.getenv('JWT_EXPIRE_SECONDS', 300))), 18
 MAX_USERS = min(max(1, int(os.getenv('MAX_USERS', 8))), 16)
 MAX_USER_LOGINS = min(max(1, int(os.getenv('MAX_USER_LOGINS', 1))), 4)
 EMPLOYEE_CLOTH_EXPIRE_SECONDS = min(max(300, int(os.getenv('EMPLOYEE_CLOTH_EXPIRE_SECONDS', 600))), 1800)    #超出秒数后员工不可修改提交数据
+MAX_LOGIN_CONNECT = 64
 
 # 配置 MySQL 连接
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
@@ -34,8 +39,16 @@ app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
-PRIVATE_KEY = None
-PUBLIC_KEY_STR = None
+connected_printer = {
+    "sid": None,
+    "user_id": None
+}
+
+printer_lock = threading.Lock()
+
+pending_auth = {}
+
+jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
 
 # 创建连接
 def get_db_connection():
@@ -46,38 +59,6 @@ def get_db_connection():
         db=app.config['MYSQL_DB'],
         charset='utf8mb4'
     )
-
-jwt_manager = JWTLoginManager(JWT_SECRET, JWT_EXPIRE_SECONDS, MAX_USERS, MAX_USER_LOGINS)
-
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-# 保存打印端连接状态
-printer_sid = None
-
-@socketio.on('connect')
-def on_connect():
-    global printer_sid
-    printer_sid = request.sid
-    print(f'Printer connected: {printer_sid}')
-    emit('server_response', {'message': 'Connected to server'})
-
-@socketio.on('disconnect')
-def on_disconnect():
-    global printer_sid
-    print(f'Printer disconnected: {request.sid}')
-    if request.sid == printer_sid:
-        printer_sid = None
-
-# 服务器主动发送打印任务接口（比如被其他系统调用）
-@app.route('/api/send_print', methods=['POST'])
-def send_print():
-    global printer_sid
-    data = request.json
-    if not printer_sid:
-        return {'status': 'error', 'message': 'Printer not connected'}, 400
-
-    socketio.emit('print_task', data, room=printer_sid)
-    return {'status': 'success'}
 
 @app.before_request
 def check_login_token():
@@ -131,23 +112,141 @@ def check_login_token():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-def load_or_generate_keys():
-    global PRIVATE_KEY, PUBLIC_KEY_STR
-    PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    PUBLIC_KEY_STR = PRIVATE_KEY.public_key().public_bytes(
+@socketio.on('connect')
+def on_connect():
+    if len(pending_auth) >= MAX_LOGIN_CONNECT:
+        emit('auth_failed', {'message': '超出最大登录连接，请稍后'})
+        disconnect()
+
+    sid = request.sid
+    private_key, public_key_str = generate_keys()
+    session['auth_private_key'] = private_key
+    emit("auth_public_key", {"key": public_key_str})
+
+    # 启动认证超时定时器（10 秒）
+    timer = Timer(10.0, lambda: kick_unverified_client(sid))
+    timer.start()
+    pending_auth[sid] = timer
+
+def kick_unverified_client(sid):
+    if sid in pending_auth:
+        socketio.emit('auth_failed', {'message': '超时未认证'}, to=sid)
+        disconnect(sid=sid)
+        pending_auth.pop(sid, None)
+
+@socketio.on('auth_request')
+def handle_auth(data):
+    sid = request.sid
+    # 清除认证超时定时器
+    if sid in pending_auth:
+        pending_auth[sid].cancel()
+        pending_auth.pop(sid, None)
+    
+    username = data.get("user_name")
+    password = data.get("user_password")
+    connect_type = data.get("connect_type")
+        
+    with printer_lock:
+        if connect_type == 'printer' and connected_printer['sid'] is not None:
+            emit('auth_failed', {'message': '已有打印机连接'})
+            disconnect()
+            return
+
+    if not username or not password:
+        emit('auth_failed', {'message': '请给出账户和密码'})
+        disconnect()
+        return
+
+    try:
+        password = decrypt_password(password, session['auth_private_key'])
+    except Exception as e:
+        emit('auth_failed', {'message': '密码格式错误'})
+        disconnect()
+        return
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    # 查询用户信息（包括加密后的密码）
+    sql = "SELECT user_id, user_name, user_password, is_admin, is_locked FROM sys_user WHERE user_name = %s"
+    cursor.execute(sql, (username,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not user:
+        emit('auth_failed', {'message': '该账户不存在'})
+        disconnect()
+        return
+
+    if int.from_bytes(user['is_locked'], 'big') == 1 and int.from_bytes(user['is_admin'], 'big') == 0:
+        jwt_manager.logout_user(user['user_id'])
+        emit('auth_failed', {'message': '该账户已被封禁'})
+        disconnect()
+        return
+    
+    if bcrypt.checkpw(password.encode('utf-8'), user['user_password'].encode('utf-8')):
+        # 密码匹配
+        if connect_type == 'printer':
+            with printer_lock:
+                if connect_type == 'printer' and connected_printer['sid'] is not None:
+                    emit('auth_failed', {'message': '已有打印机连接'})
+                    disconnect()
+                    return
+                connected_printer['sid'] = sid
+                connected_printer['user_id'] = user['user_id']
+                socketio.emit("auth_success")
+
+        else:
+            token, error = jwt_manager.generate_token(user['user_id'])
+            if not token:
+                emit('auth_failed', {'message': error})
+                disconnect()
+                return
+            socketio.emit("auth_success", {
+                'token': token,
+                'expires_seconds': JWT_EXPIRE_SECONDS,
+                'user_name': user['user_name']
+            })
+            disconnect()
+    else:
+        emit('auth_failed', {'message': '密码错误'})
+        disconnect()
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    with printer_lock:
+        if connected_printer['sid'] == request.sid:
+            connected_printer['sid'] = None
+            connected_printer['user_id'] = None
+
+# 服务器主动发送打印任务接口（比如被其他系统调用）
+@app.route('/api/send_print', methods=['POST'])
+def send_print():
+    data = request.get_json()
+    if connected_printer['sid'] is None:
+        return {'status': 'error', 'message': 'Printer not connected'}, 400
+
+    socketio.emit('print_task', data, to=connected_printer['sid'])
+    return {'status': 'success'}
+
+def generate_keys():
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key_str = private_key.public_key().public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode('utf-8')
+    return private_key, public_key_str
 
-@app.route('/api/public_key', methods=['GET'])
-def get_public_key():
-    return jsonify({'public_key': PUBLIC_KEY_STR})
-
-def decrypt_password(encrypted_b64: str) -> str:
+def decrypt_password(encrypted_b64: str, private_key) -> str:
     encrypted_bytes = base64.b64decode(encrypted_b64)
-    decrypted_bytes = PRIVATE_KEY.decrypt(
+    decrypted_bytes = private_key.decrypt(
         encrypted_bytes,
-        padding=padding.PKCS1v15())
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
     return decrypted_bytes.decode('utf-8')
 
 @app.route('/api/employee/cloth/query', methods=['POST'])
@@ -945,10 +1044,12 @@ def login():
     try:
         data = request.get_json()
         username = data.get('user_name')
-        password = decrypt_password(data.get('user_password'))
+        password = data.get('user_password')
 
         if not username or not password:
             return jsonify({'error': 'Username and password are required'}), 400
+
+        password = decrypt_password(password)
 
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -1012,6 +1113,6 @@ def refresh_token():
         return jsonify({'error': err}), 400
 
 if __name__ == '__main__':
-    load_or_generate_keys()
     # app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
+    # socketio.run(app, host='0.0.0.0', port=5000, debug=True)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
