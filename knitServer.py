@@ -9,6 +9,7 @@ import MySQLdb
 import base64
 from JWTManager import JWTLoginManager, JWTAuthManager
 from threading import Timer
+from collections import deque
 import threading
 import queue
 import uuid
@@ -21,7 +22,7 @@ load_dotenv()
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, origins=['http://localhost:5173', 'http://192.168.0.104:5173'])
+CORS(app, origins=['https://localhost:5173', 'https://192.168.0.104:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
@@ -42,7 +43,7 @@ app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 printer_lock = threading.Lock()
-printer_connected = {'jti': None, 'connected': False}
+printer_connected = {'jtis': deque(maxlen=2), 'connected': False}
 
 message_queue = queue.Queue()
 
@@ -150,7 +151,8 @@ def printer_login():
             with printer_lock:
                 if printer_connected['connected']:
                     return jsonify({'error': 'already had printer connect'}), 403
-                return jsonify({'token': printer_generate_token()}), 201
+                token, jti = printer_generate_token()
+                return jsonify({'token': token, 'jti': jti}), 201
         else:
             return jsonify({'error': 'Invalid username or password'}), 401
 
@@ -161,17 +163,17 @@ def printer_generate_token():
     jti = str(uuid.uuid4())
     payload = {
         "jti": jti,
-        "exp": int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=JWT_AUTH_EXPIRE_SECONDS)).timestamp())
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=PRINTER_EXPIRE_SECONDS)
     }
-    printer_connected['jti'] = jti
+    printer_connected['jtis'].append(jti)
     token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-    return token
+    return token, jti
 
 def printer_verify_token(token):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         jti = payload.get("jti")
-        if jti is None or jti != printer_connected['jti']:
+        if jti is None or jti not in printer_connected['jtis']:
             return False
         return True
     except jwt.ExpiredSignatureError:
@@ -196,8 +198,8 @@ def stream():
             while True:
                 # 优先推送消息队列内容
                 try:
-                    msg = message_queue.get(timeout=15)
-                    yield f"data: {json.dumps(msg)}\n\n"
+                    msg = message_queue.get(timeout=5)
+                    yield f"data: {json.dumps(msg, default=str)}\n\n"
                 except queue.Empty:
                     # 队列空时发送心跳
                     yield f"data: {json.dumps({'type': 'ping'})}\n\n"
@@ -206,30 +208,55 @@ def stream():
                 now_second = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
                 if now_second - last_refresh > PRINTER_EXPIRE_SECONDS / 2:
                     with printer_lock:
-                        new_token = printer_generate_token()
-                    yield f"data: {json.dumps({'type': 'token_refresh', 'token': new_token})}\n\n"
+                        new_token, new_jti = printer_generate_token()
+                    yield f"data: {json.dumps({'type': 'token_refresh', 'token': new_token, 'jit': new_jti})}\n\n"
                     last_refresh = now_second
         finally:
             with printer_lock:
-                printer_connected['jti'] = None
                 printer_connected['connected'] = False
 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
 
-# 普通客户端访问此接口，向管理员发送消息
+# 普通客户端访问此接口，向打印端发送消息
 @app.route('/api/send-print', methods=['POST'])
 def notify():
-    payload = request.get_json()
-    if not payload:
-        return jsonify({'error': 'no json'}), 400
+    try:
+        with printer_lock:
+            if not printer_connected['connected']:
+                return jsonify({'error': 'printer not connected'}), 403
+            
+        data = request.get_json()
+        print_label = data.get('print_label')
+        print_param = data.get('print_param')
+        if not print_label or not print_param:
+            return jsonify({'error': 'Missing required parameters'}), 400
+        
+        if print_label not in {'knit_cloth_print'}:
+            return jsonify({'error': 'Invalid print_label'}), 400
 
-    # 推送到 SSE 队列
-    message_queue.put({
-        'type': 'notify',
-        'msg': payload.get('msg', '没有消息内容')
-    })
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.callproc(print_label, [print_param])
+        sql_data = cursor.fetchone()
+        if cursor.nextset():
+            qr_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    return jsonify({'status': 'ok', 'pushed': payload})
+        message_queue.put({
+            'type': 'print',
+            'print_label': print_label,
+            'label_data': sql_data,
+            'qr_data': qr_data
+        })
+
+        return jsonify({'status': 'ok'}), 200
+    
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 def generate_keys():
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -309,6 +336,9 @@ def employee_cloth_query_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/employee/cloth/add', methods=['POST'])
 def employee_cloth_add():
@@ -676,6 +706,9 @@ def query_company_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/machine/query', methods=['POST'])
 def query_machine_with_pagination():
@@ -723,6 +756,9 @@ def query_machine_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/order/query', methods=['POST'])
 def query_order_with_pagination():
@@ -773,6 +809,9 @@ def query_order_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
     
 @app.route('/api/cloth/query', methods=['POST'])
 def query_cloth_with_pagination():
@@ -840,6 +879,9 @@ def query_cloth_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500 
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 
 @app.route('/api/delivery/query', methods=['POST'])
@@ -897,7 +939,10 @@ def query_delivery_with_pagination():
         }), 200
 
     except MySQLdb.Error as e:
-        return jsonify({'error': str(e)}), 500       
+        return jsonify({'error': str(e)}), 500     
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500  
 
 @app.route('/api/user/query', methods=['POST'])
 def query_user_with_pagination():
@@ -943,6 +988,9 @@ def query_user_with_pagination():
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
+    
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/machine/search', methods=['POST'])
 def machine_search():
@@ -1137,6 +1185,16 @@ def refresh_token():
     else:
         return jsonify({'error': err}), 400
 
+@app.route('/api/test-info', methods=['GET'])
+def test_info():
+    with printer_lock:
+        return jsonify({
+            'printer_connect': printer_connected,
+            'login_store': jwt_login_manager.login_store,
+            'login_user': jwt_login_manager.index_user,
+            'auth_store': jwt_auth_manager.auth_store
+        }), 200
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
-    # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
+    # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))

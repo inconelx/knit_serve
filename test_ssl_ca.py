@@ -24,6 +24,14 @@ ca_cert = (
     .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
     .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=825))
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()),
+        critical=False
+    )
+    .add_extension(
+        x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+        critical=False
+    )
     .add_extension(x509.KeyUsage(
         digital_signature=False, key_cert_sign=True, crl_sign=True,
         key_encipherment=False, content_commitment=False, data_encipherment=False,

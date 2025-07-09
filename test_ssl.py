@@ -34,6 +34,14 @@ server_cert = (
         x509.SubjectAlternativeName([x509.IPAddress(ipaddress.IPv4Address(server_ip))]),
         critical=False,
     )
+    .add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(server_key.public_key()),
+        critical=False
+    )
+    .add_extension(
+        x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+        critical=False
+    )
     .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
     .add_extension(x509.KeyUsage(
         digital_signature=True, key_encipherment=False, key_cert_sign=False, crl_sign=False,
@@ -56,5 +64,6 @@ with open(os.path.join(output_dir, "server_key.pem"), "wb") as f:
     ))
 with open(os.path.join(output_dir, "server_cert.pem"), "wb") as f:
     f.write(server_cert.public_bytes(serialization.Encoding.PEM))
+    f.write(ca_cert.public_bytes(serialization.Encoding.PEM))
 
 print("✅ 服务器证书生成完成")
