@@ -1,0 +1,1109 @@
+/*
+ Navicat Premium Data Transfer
+
+ Source Server         : localhost
+ Source Server Type    : MySQL
+ Source Server Version : 80042
+ Source Host           : localhost:3306
+ Source Schema         : knittest
+
+ Target Server Type    : MySQL
+ Target Server Version : 80042
+ File Encoding         : 65001
+
+ Date: 10/07/2025 18:59:49
+*/
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for combobox_value
+-- ----------------------------
+DROP TABLE IF EXISTS `combobox_value`;
+CREATE TABLE `combobox_value`  (
+  `table_name` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `table_field_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `table_field_value` int NOT NULL,
+  `table_field_label` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  PRIMARY KEY (`table_name`, `table_field_name`, `table_field_value`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of combobox_value
+-- ----------------------------
+INSERT INTO `combobox_value` VALUES ('knit_company', 'company_type', 0, '客户');
+INSERT INTO `combobox_value` VALUES ('knit_company', 'company_type', 1, '供应商');
+
+-- ----------------------------
+-- Table structure for knit_allocate
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_allocate`;
+CREATE TABLE `knit_allocate`  (
+  `allocate_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_knit_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_box` decimal(10, 0) NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`allocate_id`) USING BTREE,
+  UNIQUE INDEX `uniq_allocate_order_knit_id`(`allocate_order_id`, `allocate_knit_id`) USING BTREE,
+  INDEX `idx_allocate_order_id`(`allocate_order_id`) USING BTREE,
+  INDEX `idx_allocate_knit_id`(`allocate_knit_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_allocate
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for knit_allocate_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_allocate_del`;
+CREATE TABLE `knit_allocate_del`  (
+  `allocate_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_knit_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `allocate_box` decimal(10, 0) NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`allocate_id`) USING BTREE,
+  INDEX `idx_allocate_order_id`(`allocate_order_id`) USING BTREE,
+  INDEX `idx_allocate_knit_id`(`allocate_knit_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_allocate_del
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for knit_cloth
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_cloth`;
+CREATE TABLE `knit_cloth`  (
+  `cloth_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `cloth_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_machine_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_origin_weight` decimal(10, 2) NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_weight_correct` decimal(10, 2) NULL DEFAULT NULL COMMENT '重量修正',
+  `cloth_delivery_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_delivery_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`cloth_id`) USING BTREE,
+  INDEX `idx_cloth_delivery_id`(`cloth_delivery_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_cloth
+-- ----------------------------
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-1', 'ORD-250620-2', 'MACH-250616-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 11:56:03', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-2', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 12:47:41', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-3', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 13:10:12', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-4', 'ORD-250620-2', 'MACH-250616-1', 25.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 14:09:14', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0101', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:35', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0102', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:40', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0103', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:49', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0104', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:57', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0105', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:07', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0106', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:13', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0107', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0108', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 21:59:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0109', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:52:57', 'ADMIN', '2025-06-27 21:59:36', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-07-07 14:52:57');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250706-0001', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-07-10 16:13:25', 'ADMIN', '2025-07-06 17:45:27', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-07-10 13:59:42');
+
+-- ----------------------------
+-- Table structure for knit_cloth_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_cloth_del`;
+CREATE TABLE `knit_cloth_del`  (
+  `cloth_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `cloth_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_machine_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_origin_weight` decimal(10, 2) NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_weight_correct` decimal(10, 2) NULL DEFAULT NULL COMMENT '重量修正',
+  `cloth_delivery_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cloth_delivery_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`cloth_id`) USING BTREE,
+  INDEX `idx_cloth_delivery_id`(`cloth_delivery_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_cloth_del
+-- ----------------------------
+INSERT INTO `knit_cloth_del` VALUES ('123', 'ORD_250620_2', '123', 123.00, '2025-06-24 11:57:00', 'ADMIN', '2025-06-23 11:29:17', 'ADMIN', NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0001', NULL, NULL, 20.00, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:14', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0002', NULL, NULL, 20.10, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:14', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0003', NULL, NULL, 20.20, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:15', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0004', NULL, NULL, 20.30, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:15', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0005', NULL, NULL, 20.40, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:15', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0006', NULL, NULL, 20.50, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:15', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0007', NULL, NULL, 20.60, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:15', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0008', NULL, NULL, 20.70, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:16', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0009', NULL, NULL, 20.80, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:16', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0010', NULL, NULL, 20.90, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:16', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0011', NULL, NULL, 20.10, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:16', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0012', NULL, NULL, 20.11, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:16', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0013', NULL, NULL, 20.12, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0014', NULL, NULL, 20.13, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0015', NULL, NULL, 20.14, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0016', NULL, NULL, 20.15, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0017', NULL, NULL, 20.16, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0018', NULL, NULL, 20.17, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:17', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0019', NULL, NULL, 20.18, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:18', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0020', NULL, NULL, 20.19, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:18', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0021', NULL, NULL, 20.20, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:18', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0022', NULL, NULL, 20.21, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:18', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0023', NULL, NULL, 20.22, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:18', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0024', NULL, NULL, 20.23, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:19', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0025', NULL, NULL, 20.24, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:19', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0026', NULL, NULL, 20.25, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:19', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0027', NULL, NULL, 20.26, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:19', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0028', NULL, NULL, 20.27, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:20', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0029', NULL, NULL, 20.28, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:20', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0030', NULL, NULL, 20.29, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:20', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0031', NULL, NULL, 20.30, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:20', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0032', NULL, NULL, 20.31, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0033', NULL, NULL, 20.32, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0034', NULL, NULL, 20.33, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0035', NULL, NULL, 20.34, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0036', NULL, NULL, 20.35, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0037', NULL, NULL, 20.36, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:21', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0038', NULL, NULL, 20.37, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:22', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0039', NULL, NULL, 20.38, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:22', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0040', NULL, NULL, 20.39, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:22', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0041', NULL, NULL, 20.40, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:22', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0042', NULL, NULL, 20.41, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0043', NULL, NULL, 20.42, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0044', NULL, NULL, 20.43, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0045', NULL, NULL, 20.44, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0046', NULL, NULL, 20.45, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:23', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0047', NULL, NULL, 20.46, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:24', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0048', NULL, NULL, 20.47, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:24', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0049', NULL, NULL, 20.48, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:24', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0050', NULL, NULL, 20.49, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:24', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0051', NULL, NULL, 20.50, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0052', NULL, NULL, 20.51, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0053', NULL, NULL, 20.52, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0054', NULL, NULL, 20.53, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0055', NULL, NULL, 20.54, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0056', NULL, NULL, 20.55, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:25', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0057', NULL, NULL, 20.56, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0058', NULL, NULL, 20.57, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0059', NULL, NULL, 20.58, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0060', NULL, NULL, 20.59, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0061', NULL, NULL, 20.60, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:26', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0062', NULL, NULL, 20.61, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:27', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0063', NULL, NULL, 20.62, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:27', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0064', NULL, NULL, 20.63, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:27', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0065', NULL, NULL, 20.64, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:27', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0066', NULL, NULL, 20.65, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:27', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0067', NULL, NULL, 20.66, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0068', NULL, NULL, 20.67, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0069', NULL, NULL, 20.68, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0070', NULL, NULL, 20.69, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0071', NULL, NULL, 20.70, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0072', NULL, NULL, 20.71, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:28', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0073', NULL, NULL, 20.72, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:29', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0074', NULL, NULL, 20.73, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:29', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0075', NULL, NULL, 20.74, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:29', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0076', NULL, NULL, 20.75, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:29', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0077', NULL, NULL, 20.76, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:29', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0078', NULL, NULL, 20.77, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:30', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0079', NULL, NULL, 20.78, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:30', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0080', NULL, NULL, 20.79, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:30', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0081', NULL, NULL, 20.80, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0082', NULL, NULL, 20.81, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0083', NULL, NULL, 20.82, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0084', NULL, NULL, 20.83, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0085', NULL, NULL, 20.84, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0086', NULL, NULL, 20.85, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:31', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0087', NULL, NULL, 20.86, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:32', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0088', NULL, NULL, 20.87, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:32', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0089', NULL, NULL, 20.88, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:32', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0090', NULL, NULL, 20.89, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:32', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0091', NULL, NULL, 20.90, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:32', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0092', NULL, NULL, 20.91, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:33', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0093', NULL, NULL, 20.92, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:33', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0094', NULL, NULL, 20.93, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:33', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0095', NULL, NULL, 20.94, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:33', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0096', NULL, NULL, 20.95, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:33', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0097', NULL, NULL, 20.96, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:34', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0098', NULL, NULL, 20.97, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:34', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0099', NULL, NULL, 20.98, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:34', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0100', NULL, NULL, 20.99, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:34', 'ADMIN', NULL, NULL, NULL, NULL);
+
+-- ----------------------------
+-- Table structure for knit_company
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_company`;
+CREATE TABLE `knit_company`  (
+  `company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `company_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `company_type` int NULL DEFAULT NULL COMMENT '0:客户/1:供应商',
+  `company_abbreviation` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`company_id`) USING BTREE,
+  UNIQUE INDEX `uniq_company_name`(`company_name`) USING BTREE,
+  UNIQUE INDEX `uniq_company_abbreviation`(`company_abbreviation`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_company
+-- ----------------------------
+INSERT INTO `knit_company` VALUES ('COMP-250613-10', 'フォニイ', 0, 'フォニイ', NULL, NULL, '2025-07-06 15:03:34', 'ADMIN', '2025-06-13 15:48:10', 'ADMIN', 'ツミキ');
+INSERT INTO `knit_company` VALUES ('COMP-250613-3', 'アンテナ39', 0, 'アンテナ39', NULL, NULL, '2025-06-19 17:00:25', 'ADMIN', '2025-06-13 15:07:29', 'ADMIN', '柊マグネタイト');
+INSERT INTO `knit_company` VALUES ('COMP-250613-8', 'ロミオとシンデレラ', 0, 'ロミオとシンデレラ', NULL, NULL, '2025-06-19 17:00:20', 'ADMIN', '2025-06-13 15:35:19', 'ADMIN', 'doriko');
+INSERT INTO `knit_company` VALUES ('COMP-250613-9', 'ざぁこ', 0, 'ざぁこ', NULL, NULL, '2025-06-19 17:00:15', 'ADMIN', '2025-06-13 15:45:30', 'ADMIN', '柊マグネタイト');
+
+-- ----------------------------
+-- Table structure for knit_company_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_company_del`;
+CREATE TABLE `knit_company_del`  (
+  `company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `company_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `company_type` int NULL DEFAULT NULL COMMENT '0:客户/1:供应商',
+  `company_abbreviation` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`company_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_company_del
+-- ----------------------------
+INSERT INTO `knit_company_del` VALUES ('COMP_250619_1', '115', 0, 'null', '2025-06-19 16:54:36', 'ADMIN', NULL, NULL, '2025-06-19 16:53:44', 'ADMIN', 'null');
+INSERT INTO `knit_company_del` VALUES ('COMP_250619_2', 'gfbgf', 1, 'bggb', '2025-06-19 16:59:26', 'ADMIN', NULL, NULL, '2025-06-19 16:59:04', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP_250619_3', 'テレパシ', 0, 'テレパシ', '2025-06-19 17:16:29', 'ADMIN', NULL, NULL, '2025-06-19 17:03:32', 'ADMIN', 'DECO*27');
+INSERT INTO `knit_company_del` VALUES ('COMP_250619_4', 'コート', 1, 'コート', '2025-06-19 17:16:29', 'ADMIN', NULL, NULL, '2025-06-19 17:16:12', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250625-000002', 'kjkj', 0, 'gf', '2025-06-25 17:52:50', 'ADMIN', NULL, NULL, '2025-06-25 17:52:29', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250625-00004', 'dsfd45', 0, 'dsds45', '2025-06-26 17:04:35', 'ADMIN', NULL, NULL, '2025-06-25 17:54:57', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250625-0003', 'dsfd', 0, 'dsds', '2025-06-26 17:04:35', 'ADMIN', NULL, NULL, '2025-06-25 17:53:02', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250625-1', '%', 0, '%', '2025-06-25 17:49:10', 'ADMIN', NULL, NULL, '2025-06-25 17:45:31', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250626-0002', '156', 0, '1', '2025-06-26 17:54:33', 'ADMIN', NULL, NULL, '2025-06-26 17:05:55', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250706-0001', '14', 0, '14', '2025-07-06 14:36:06', 'ADMIN', NULL, NULL, '2025-07-06 14:35:49', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250706-0002', '25', 0, '25', '2025-07-06 14:58:34', 'ADMIN', NULL, NULL, '2025-07-06 14:58:26', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP250626000001', '159', 0, '159', '2025-06-26 17:05:49', 'ADMIN', NULL, NULL, '2025-06-26 17:04:43', 'ADMIN', NULL);
+
+-- ----------------------------
+-- Table structure for knit_delivery
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_delivery`;
+CREATE TABLE `knit_delivery`  (
+  `delivery_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delivery_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delivery_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`delivery_id`) USING BTREE,
+  UNIQUE INDEX `uniq_delivery_no`(`delivery_no`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_delivery
+-- ----------------------------
+INSERT INTO `knit_delivery` VALUES ('DLVY-250626-0001', 'test_delivery_1', 'COMP-250613-8', NULL, NULL, '2025-06-27 17:48:04', 'ADMIN', '2025-06-26 17:54:22', 'ADMIN', NULL);
+INSERT INTO `knit_delivery` VALUES ('DLVY-250627-0001', 'test_delivery_2', 'COMP-250613-9', NULL, NULL, '2025-06-27 21:52:34', 'ADMIN', '2025-06-27 17:13:02', 'ADMIN', NULL);
+
+-- ----------------------------
+-- Table structure for knit_delivery_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_delivery_del`;
+CREATE TABLE `knit_delivery_del`  (
+  `delivery_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delivery_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delivery_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`delivery_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_delivery_del
+-- ----------------------------
+INSERT INTO `knit_delivery_del` VALUES ('123', '123', NULL, '2025-06-26 17:54:27', 'ADMIN', '2025-06-26 17:10:06', 'ADMIN', '2025-06-26 17:00:43', 'ADMIN', NULL);
+INSERT INTO `knit_delivery_del` VALUES ('DLVY-250705-0001', '但是v但是', 'COMP-250613-9', '2025-07-05 20:31:15', 'ADMIN', NULL, NULL, '2025-07-05 20:31:11', 'ADMIN', NULL);
+
+-- ----------------------------
+-- Table structure for knit_machine
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_machine`;
+CREATE TABLE `knit_machine`  (
+  `machine_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `machine_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `machine_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '机台当前订单',
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`machine_id`) USING BTREE,
+  UNIQUE INDEX `uniq_machine_name`(`machine_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_machine
+-- ----------------------------
+INSERT INTO `knit_machine` VALUES ('MACH-250614-1', '1#', 'ORD-250620-1', NULL, NULL, '2025-06-24 14:04:48', 'ADMIN', '2025-06-14 17:59:07', 'ADMIN', '');
+INSERT INTO `knit_machine` VALUES ('MACH-250616-1', '2#', 'ORD-250620-2', NULL, NULL, '2025-06-24 14:04:42', 'ADMIN', '2025-06-16 18:09:40', 'ADMIN', '');
+
+-- ----------------------------
+-- Table structure for knit_machine_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_machine_del`;
+CREATE TABLE `knit_machine_del`  (
+  `machine_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `machine_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `machine_order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '机台当前订单',
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`machine_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_machine_del
+-- ----------------------------
+INSERT INTO `knit_machine_del` VALUES ('MACH_250619_1', '3#', NULL, '2025-06-19 17:04:48', 'ADMIN', NULL, NULL, '2025-06-19 17:04:41', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_1', '4', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:38', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_2', '5', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:42', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_3', '6', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:46', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_4', '7', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:49', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_5', '8', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:56', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_6', '9', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:59', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_7', '10', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:39:03', 'ADMIN', NULL);
+
+-- ----------------------------
+-- Table structure for knit_order
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_order`;
+CREATE TABLE `knit_order`  (
+  `order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `order_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_custom_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_color` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_piece` decimal(10, 0) NULL DEFAULT NULL,
+  `order_cloth_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `order_cloth_weight_price` decimal(10, 2) NULL DEFAULT NULL,
+  `order_cloth_add` decimal(10, 2) NULL DEFAULT NULL,
+  PRIMARY KEY (`order_id`) USING BTREE,
+  UNIQUE INDEX `uniq_order_no`(`order_no`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_order
+-- ----------------------------
+INSERT INTO `knit_order` VALUES ('ORD-250620-1', 'test_1', NULL, NULL, '2025-06-27 22:13:23', 'ADMIN', '2025-06-20 16:18:56', 'ADMIN', NULL, 'COMP-250613-3', 'test_name', 'test_color', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_order` VALUES ('ORD-250620-2', 'test_2', NULL, NULL, '2025-06-27 22:13:23', 'ADMIN', '2025-06-20 17:18:56', 'ADMIN', '123456', 'COMP-250613-8', '测试产品', '测试颜色', 100, 2000.00, NULL, NULL);
+
+-- ----------------------------
+-- Table structure for knit_order_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_order_del`;
+CREATE TABLE `knit_order_del`  (
+  `order_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `order_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_custom_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_color` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `order_cloth_piece` decimal(10, 0) NULL DEFAULT NULL,
+  `order_cloth_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `order_cloth_weight_price` decimal(10, 2) NULL DEFAULT NULL,
+  `order_cloth_add` decimal(10, 2) NULL DEFAULT NULL,
+  PRIMARY KEY (`order_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_order_del
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for knit_yarn
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_yarn`;
+CREATE TABLE `knit_yarn`  (
+  `yarn_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `yarn_purchase_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_color` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_box` decimal(10, 0) NOT NULL,
+  `yarn_net_weight` decimal(10, 2) NOT NULL,
+  `yarn_gross_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `yarn_box_net_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `yarn_weight_price` decimal(10, 2) NULL DEFAULT NULL,
+  PRIMARY KEY (`yarn_id`) USING BTREE,
+  UNIQUE INDEX `uniq_yarn_order_no`(`yarn_purchase_no`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_yarn
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for knit_yarn_del
+-- ----------------------------
+DROP TABLE IF EXISTS `knit_yarn_del`;
+CREATE TABLE `knit_yarn_del`  (
+  `yarn_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `yarn_purchase_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_company_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_color` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `yarn_box` decimal(10, 0) NOT NULL,
+  `yarn_net_weight` decimal(10, 2) NOT NULL,
+  `yarn_gross_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `yarn_box_net_weight` decimal(10, 2) NULL DEFAULT NULL,
+  `yarn_weight_price` decimal(10, 2) NULL DEFAULT NULL,
+  PRIMARY KEY (`yarn_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of knit_yarn_del
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for serial_code_table
+-- ----------------------------
+DROP TABLE IF EXISTS `serial_code_table`;
+CREATE TABLE `serial_code_table`  (
+  `prefix` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+  `last_date` date NULL DEFAULT NULL,
+  `number` int NULL DEFAULT 0,
+  PRIMARY KEY (`prefix`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of serial_code_table
+-- ----------------------------
+INSERT INTO `serial_code_table` VALUES ('clt', '2025-06-24', 4);
+INSERT INTO `serial_code_table` VALUES ('clth', '2025-07-06', 1);
+INSERT INTO `serial_code_table` VALUES ('comp', '2025-07-06', 2);
+INSERT INTO `serial_code_table` VALUES ('dlvy', '2025-07-05', 1);
+INSERT INTO `serial_code_table` VALUES ('mach', '2025-06-24', 7);
+INSERT INTO `serial_code_table` VALUES ('ord', '2025-06-20', 2);
+INSERT INTO `serial_code_table` VALUES ('user', '2025-07-09', 1);
+
+-- ----------------------------
+-- Table structure for sys_user
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_user`;
+CREATE TABLE `sys_user`  (
+  `user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `user_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `user_password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `is_admin` bit(1) NULL DEFAULT b'0',
+  `is_locked` bit(1) NULL DEFAULT b'0',
+  `print_allowed` bit(1) NULL DEFAULT b'0',
+  `real_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`user_id`) USING BTREE,
+  UNIQUE INDEX `uniq_user_name`(`user_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_user
+-- ----------------------------
+INSERT INTO `sys_user` VALUES ('ADMIN', 'ADMIN', '$2b$10$gethq/USHjfozjHBZZaavOxFI2FQKzRu5wPLcytFnhmYUOwJ3667S', NULL, b'1', b'0', b'0', NULL, NULL, NULL, '2025-07-04 01:04:21', 'ADMIN', NULL, NULL);
+INSERT INTO `sys_user` VALUES ('USER-250703-0002', '123', '$2b$10$hbgmHMb44j5Bfz987K5EXeIIF9XZmpkU1Ph0gsNdg3iubDRtFGZZS', NULL, b'0', b'0', b'0', '测试姓名', NULL, NULL, '2025-07-10 18:23:34', 'ADMIN', '2025-07-03 23:35:27', 'ADMIN');
+INSERT INTO `sys_user` VALUES ('USER-250709-0001', 'PRINTER', '$2b$10$hUFwunZlA3/AlTvVnGiQ7eRGykslzXghLueUS59NUVggNwyvqZq1u', '打印机用账号', b'0', b'0', b'0', NULL, NULL, NULL, NULL, NULL, '2025-07-09 22:39:01', 'ADMIN');
+
+-- ----------------------------
+-- Table structure for sys_user_del
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_user_del`;
+CREATE TABLE `sys_user_del`  (
+  `user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `user_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `user_password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `is_admin` bit(1) NULL DEFAULT b'0',
+  `is_locked` bit(1) NULL DEFAULT b'0',
+  `print_allowed` bit(1) NULL DEFAULT b'0',
+  `real_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `delete_time` datetime NULL DEFAULT NULL,
+  `delete_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `edit_time` datetime NULL DEFAULT NULL,
+  `edit_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT NULL,
+  `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`user_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_user_del
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for table_primary_prefix
+-- ----------------------------
+DROP TABLE IF EXISTS `table_primary_prefix`;
+CREATE TABLE `table_primary_prefix`  (
+  `table_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `primary_prefix` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  PRIMARY KEY (`table_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of table_primary_prefix
+-- ----------------------------
+INSERT INTO `table_primary_prefix` VALUES ('knit_cloth', 'clth');
+INSERT INTO `table_primary_prefix` VALUES ('knit_company', 'comp');
+INSERT INTO `table_primary_prefix` VALUES ('knit_delivery', 'dlvy');
+INSERT INTO `table_primary_prefix` VALUES ('knit_machine', 'mach');
+INSERT INTO `table_primary_prefix` VALUES ('knit_order', 'ord');
+INSERT INTO `table_primary_prefix` VALUES ('knit_yarn', 'yarn');
+INSERT INTO `table_primary_prefix` VALUES ('sys_user', 'user');
+
+-- ----------------------------
+-- Table structure for test_table
+-- ----------------------------
+DROP TABLE IF EXISTS `test_table`;
+CREATE TABLE `test_table`  (
+  `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'uuid()',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `add_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted` bit(1) NULL DEFAULT b'0',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of test_table
+-- ----------------------------
+INSERT INTO `test_table` VALUES ('0049b0bc-41fe-11f0-9773-b025aa37d0b5', '125634', '2025-06-05 19:12:43', b'1');
+INSERT INTO `test_table` VALUES ('1d1ede78-41fe-11f0-9773-b025aa37d0b5', '12356', '2025-06-05 19:13:31', b'0');
+INSERT INTO `test_table` VALUES ('56d9dfa0-4217-11f0-9773-b025aa37d0b5', 'dhsusd', '2025-06-05 22:14:05', b'0');
+INSERT INTO `test_table` VALUES ('6ec939f5-41f9-11f0-9773-b025aa37d0b5', 'alice', '2025-06-05 18:40:00', b'0');
+INSERT INTO `test_table` VALUES ('7565a0ad-41f7-11f0-9773-b025aa37d0b5', '125', '2025-06-05 18:25:53', b'1');
+INSERT INTO `test_table` VALUES ('7ab27807-41f8-11f0-9773-b025aa37d0b5', '123', '2025-06-05 18:33:11', b'1');
+INSERT INTO `test_table` VALUES ('90b7a10a-41f8-11f0-9773-b025aa37d0b5', '125', '2025-06-05 18:33:48', b'1');
+INSERT INTO `test_table` VALUES ('94040dc0-41f8-11f0-9773-b025aa37d0b5', 'add', '2025-06-05 18:33:53', b'1');
+INSERT INTO `test_table` VALUES ('d67b1389-420f-11f0-9773-b025aa37d0b5', '1598', '2025-06-05 21:20:23', b'1');
+INSERT INTO `test_table` VALUES ('uuid()', 'JinZehao', '2025-06-06 17:25:45', b'1');
+
+-- ----------------------------
+-- Procedure structure for generate_serial_code
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `generate_serial_code`;
+delimiter ;;
+CREATE PROCEDURE `generate_serial_code`(IN in_prefix VARCHAR(4), OUT out_code VARCHAR(30))
+BEGIN
+    DECLARE cur_date DATE;
+    DECLARE existing_number INT;
+    DECLARE existing_date DATE;
+
+		IF in_prefix NOT REGEXP '^[A-Za-z0-9]+$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid prefix: only letters and digits are allowed.';
+    END IF;
+
+    SET cur_date = CURDATE();
+
+    -- 检查是否已存在该prefix记录
+    IF EXISTS (SELECT 1 FROM serial_code_table WHERE prefix = in_prefix) THEN
+        SELECT last_date, number INTO existing_date, existing_number
+        FROM serial_code_table
+        WHERE prefix = in_prefix;
+
+        IF existing_date = cur_date THEN
+            SET existing_number = existing_number + 1;
+        ELSE
+            SET existing_number = 1;
+        END IF;
+
+        -- 更新记录
+        UPDATE serial_code_table
+        SET last_date = cur_date,
+            number = existing_number
+        WHERE prefix = in_prefix;
+
+    ELSE
+        -- 插入新记录
+        SET existing_number = 1;
+        INSERT INTO serial_code_table (prefix, last_date, number)
+        VALUES (in_prefix, cur_date, existing_number);
+    END IF;
+
+    -- 拼接编号 prefix_YYMMDD_number
+    SET out_code = CONCAT(UPPER(in_prefix), '-', DATE_FORMAT(cur_date, '%y%m%d'), '-', RIGHT(LPAD(existing_number, 5, '0'), 4));
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Procedure structure for knit_cloth_print
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `knit_cloth_print`;
+delimiter ;;
+CREATE PROCEDURE `knit_cloth_print`(IN `print_cloth_id` varchar(60))
+BEGIN
+	select A.cloth_id,
+	B.order_no, B.order_cloth_name, B.order_cloth_color,
+	C.machine_name,
+	D.user_name AS add_user_name,
+	(A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight
+	from knit_cloth A
+	left join knit_order B on A.cloth_order_id = B.order_id
+	left join knit_machine C on A.cloth_machine_id = C.machine_id
+	left join sys_user D on A.add_user_id = D.user_id
+	where A.cloth_id = print_cloth_id;
+	select print_cloth_id AS qr_code;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Procedure structure for super_delete
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `super_delete`;
+delimiter ;;
+CREATE PROCEDURE `super_delete`(IN in_table_name VARCHAR(100),
+    IN in_user_id VARCHAR(100),
+    IN in_pk_values JSON)
+BEGIN
+    DECLARE v_valid_table INT DEFAULT 0;
+    DECLARE v_valid_table_del INT DEFAULT 0;
+    DECLARE v_pk_name VARCHAR(100);
+    DECLARE v_pk_num INT DEFAULT 0;
+    DECLARE v_conditions TEXT DEFAULT '';
+    DECLARE v_i INT DEFAULT 0;
+    DECLARE v_count INT DEFAULT 0;
+    DECLARE v_pk_value TEXT;
+    DECLARE v_now DATETIME DEFAULT NOW();
+
+    DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
+
+    -- 参数大小校验
+    IF LENGTH(in_pk_values) > CONST_MAX_PK_VALUES_SIZE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Primary key values JSON too large';
+    END IF;
+
+    -- 表存在性
+    SELECT COUNT(*) INTO v_valid_table
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = in_table_name;
+    IF v_valid_table = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
+
+    -- 删除备份表名
+    SET @delete_table_name = CONCAT(in_table_name, '_del');
+
+    -- 删除表存在性
+    SELECT COUNT(*) INTO v_valid_table_del
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = @delete_table_name;
+    IF v_valid_table_del = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Delete backup table not found';
+    END IF;
+
+    -- 读取唯一主键字段名
+    SELECT COUNT(*), COLUMN_NAME INTO v_pk_num, v_pk_name
+    FROM information_schema.key_column_usage
+    WHERE table_schema = DATABASE()
+      AND table_name = in_table_name
+      AND constraint_name = 'PRIMARY'
+    GROUP BY COLUMN_NAME
+    LIMIT 1;
+
+    IF v_pk_num <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table must have a unique single primary key';
+    END IF;
+
+    -- 校验 in_pk_values 类型和非空
+    IF JSON_TYPE(in_pk_values) != 'ARRAY' OR JSON_LENGTH(in_pk_values) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Primary key values must be a non-empty JSON array';
+    END IF;
+
+    SET v_count = JSON_LENGTH(in_pk_values);
+    SET v_i = 0;
+
+    -- 拼接安全的 WHERE 主键 IN (...)
+    WHILE v_i < v_count DO
+        SET v_pk_value = JSON_UNQUOTE(JSON_EXTRACT(in_pk_values, CONCAT('$[', v_i, ']')));
+        -- 主键格式校验，示例：字母数字下划线中划线，最长64字符
+        IF v_pk_value NOT REGEXP '^[a-zA-Z0-9_-]{1,64}$' THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid primary key value';
+        END IF;
+
+        SET v_conditions = IF(v_conditions = '', QUOTE(v_pk_value), CONCAT(v_conditions, ',', QUOTE(v_pk_value)));
+        SET v_i = v_i + 1;
+    END WHILE;
+
+    -- 更新删除标记
+    SET @sql_update = CONCAT(
+        'UPDATE `', in_table_name, '` SET ',
+        '`delete_time` = ', QUOTE(DATE_FORMAT(v_now, '%Y-%m-%d %H:%i:%s')), ', ',
+        '`delete_user_id` = ', QUOTE(in_user_id),
+        ' WHERE `', v_pk_name, '` IN (', v_conditions, ')'
+    );
+
+    -- 备份到删除表
+    SET @sql_insert = CONCAT(
+        'INSERT INTO `', @delete_table_name, '` ',
+        'SELECT * FROM `', in_table_name, '` ',
+        'WHERE `', v_pk_name, '` IN (', v_conditions, ')'
+    );
+
+    -- 真正删除
+    SET @sql_delete = CONCAT(
+        'DELETE FROM `', in_table_name, '` ',
+        'WHERE `', v_pk_name, '` IN (', v_conditions, ')'
+    );
+
+    -- 执行三步操作
+    PREPARE stmt1 FROM @sql_update; EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
+    PREPARE stmt2 FROM @sql_insert; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;
+    PREPARE stmt3 FROM @sql_delete; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Procedure structure for super_insert
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `super_insert`;
+delimiter ;;
+CREATE PROCEDURE `super_insert`(IN in_table_name VARCHAR(100),
+    IN in_user_id VARCHAR(100),
+    IN in_json_data JSON)
+BEGIN
+    DECLARE v_prefix VARCHAR(50);
+    DECLARE v_new_id VARCHAR(100);
+    DECLARE v_columns TEXT DEFAULT '`add_user_id`, `add_time`';
+    DECLARE v_values TEXT DEFAULT '';
+    DECLARE v_key VARCHAR(100);
+    DECLARE v_raw_value JSON;
+    DECLARE v_sql_value TEXT;
+    DECLARE v_field_type VARCHAR(50);
+    DECLARE v_count INT DEFAULT 0;
+    DECLARE v_i INT DEFAULT 0;
+    DECLARE v_now DATETIME DEFAULT NOW();
+    DECLARE v_pk_name VARCHAR(100);
+    DECLARE v_valid_table INT DEFAULT 0;
+
+    DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
+
+    -- ✅ 限制 JSON 大小
+    IF LENGTH(in_json_data) > CONST_MAX_JSON_DATA_SIZE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert data JSON too large';
+    END IF;
+
+    -- ✅ 表合法性检查
+    SELECT COUNT(*) INTO v_valid_table
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = in_table_name;
+
+    IF v_valid_table = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
+
+    -- ✅ 获取主键字段（要求唯一主键）
+    SELECT COLUMN_NAME INTO v_pk_name
+    FROM information_schema.key_column_usage
+    WHERE table_schema = DATABASE()
+      AND table_name = in_table_name
+      AND constraint_name = 'PRIMARY'
+    GROUP BY COLUMN_NAME
+    HAVING COUNT(*) = 1;
+
+    IF v_pk_name IS NULL OR 
+       (SELECT COUNT(*) FROM information_schema.key_column_usage
+        WHERE table_schema = DATABASE() AND table_name = in_table_name AND constraint_name = 'PRIMARY') > 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table must have single-column primary key';
+    END IF;
+
+    -- ✅ 获取主键前缀
+    SELECT primary_prefix INTO v_prefix
+    FROM table_primary_prefix
+    WHERE table_name = in_table_name;
+
+    IF v_prefix IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No prefix found for given table';
+    END IF;
+
+    -- ✅ 缓存字段名和类型
+    CREATE TEMPORARY TABLE column_cache AS
+    SELECT COLUMN_NAME, DATA_TYPE
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = in_table_name;
+
+    -- ✅ 添加固定字段值
+    SET v_values = CONCAT(QUOTE(in_user_id), ',', QUOTE(DATE_FORMAT(v_now, '%Y-%m-%d %H:%i:%s')));
+
+    -- ✅ 遍历 JSON 数据
+    SET v_count = JSON_LENGTH(in_json_data);
+    WHILE v_i < v_count DO
+        SET v_key = JSON_UNQUOTE(JSON_EXTRACT(JSON_KEYS(in_json_data), CONCAT('$[', v_i, ']')));
+
+        -- ✅ 字段名合法性校验
+        IF (SELECT COUNT(*) FROM column_cache WHERE COLUMN_NAME = v_key) = 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid insert field name';
+        END IF;
+
+        -- ✅ 跳过主键和保留字段
+        IF v_key NOT IN ('add_time', 'add_user_id', 'edit_time', 'edit_user_id', 'delete_time', 'delete_user_id', v_pk_name) THEN
+            SET v_raw_value = JSON_EXTRACT(in_json_data, CONCAT('$.', v_key));
+
+            -- 取字段类型
+            SELECT DATA_TYPE INTO v_field_type FROM column_cache WHERE COLUMN_NAME = v_key;
+
+            -- 类型判断与拼接
+            IF JSON_TYPE(v_raw_value) = 'NULL' THEN
+                SET v_sql_value = 'NULL';
+            ELSEIF JSON_TYPE(v_raw_value) = 'BOOLEAN' THEN
+                SET v_sql_value = IF(JSON_UNQUOTE(v_raw_value) = 'true', '1', '0');
+            ELSEIF v_field_type = 'datetime' AND JSON_TYPE(v_raw_value) = 'INTEGER' THEN
+                SET v_sql_value = QUOTE(DATE_FORMAT(DATE_ADD(v_now, INTERVAL JSON_UNQUOTE(v_raw_value) SECOND), '%Y-%m-%d %H:%i:%s'));
+            ELSEIF JSON_TYPE(v_raw_value) IN ('OBJECT', 'ARRAY') THEN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unsupported value type for field';
+            ELSE
+                SET v_sql_value = QUOTE(JSON_UNQUOTE(v_raw_value));
+            END IF;
+
+            SET v_columns = CONCAT(v_columns, ',`', v_key, '`');
+            SET v_values = CONCAT(v_values, ',', v_sql_value);
+        END IF;
+
+        SET v_i = v_i + 1;
+    END WHILE;
+
+    -- ✅ 主键生成
+    CALL generate_serial_code(v_prefix, v_new_id);
+    SET v_columns = CONCAT('`', v_pk_name, '`', ',', v_columns);
+    SET v_values = CONCAT(QUOTE(v_new_id), ',', v_values);
+
+    -- ✅ 执行插入
+    SET @sql_text = CONCAT('INSERT INTO `', in_table_name, '` (', v_columns, ') VALUES (', v_values, ')');
+    PREPARE stmt FROM @sql_text;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+
+		select v_new_id AS super_insert_id;
+
+    DROP TEMPORARY TABLE IF EXISTS column_cache;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Procedure structure for super_update
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `super_update`;
+delimiter ;;
+CREATE PROCEDURE `super_update`(IN in_table_name VARCHAR(100),
+    IN in_user_id VARCHAR(100),
+    IN in_pk_values JSON,
+    IN in_json_data JSON)
+BEGIN
+    DECLARE v_set_clause TEXT DEFAULT '';
+    DECLARE v_key VARCHAR(100);
+    DECLARE v_raw_value JSON;
+    DECLARE v_sql_value TEXT;
+    DECLARE v_field_type VARCHAR(50);
+    DECLARE v_count INT DEFAULT 0;
+    DECLARE v_i INT DEFAULT 0;
+    DECLARE v_now DATETIME DEFAULT NOW();
+    DECLARE v_valid_table INT DEFAULT 0;
+    DECLARE v_pk_name VARCHAR(100);
+    DECLARE v_pk_num INT DEFAULT 0;
+    DECLARE v_pk_sql TEXT DEFAULT '';
+    DECLARE v_pk_total INT DEFAULT 0;
+    DECLARE v_pk_i INT DEFAULT 0;
+    DECLARE v_pk_value TEXT;
+
+    -- 大小限制阈值
+    DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
+    DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
+
+    -- 参数大小校验
+    IF LENGTH(in_pk_values) > CONST_MAX_PK_VALUES_SIZE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Primary key values JSON too large';
+    END IF;
+    IF LENGTH(in_json_data) > CONST_MAX_JSON_DATA_SIZE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update data JSON too large';
+    END IF;
+
+    -- 表存在性
+    SELECT COUNT(*) INTO v_valid_table
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = in_table_name;
+    IF v_valid_table = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
+
+    -- 主键字段且唯一单字段判断
+    SELECT COUNT(*), COLUMN_NAME INTO v_pk_num, v_pk_name
+    FROM information_schema.key_column_usage
+    WHERE table_schema = DATABASE()
+      AND table_name = in_table_name
+      AND constraint_name = 'PRIMARY'
+    GROUP BY COLUMN_NAME
+    LIMIT 1;
+    IF v_pk_num <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table must have a unique single primary key';
+    END IF;
+
+    -- 检查 in_pk_values 类型和非空
+    IF JSON_TYPE(in_pk_values) != 'ARRAY' OR JSON_LENGTH(in_pk_values) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Primary key values must be a non-empty JSON array';
+    END IF;
+
+    -- 缓存列名和类型
+    CREATE TEMPORARY TABLE IF NOT EXISTS column_cache AS
+    SELECT COLUMN_NAME, DATA_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = in_table_name;
+
+    -- 初始化 set 子句
+    SET v_set_clause = CONCAT('`edit_user_id` = ', QUOTE(in_user_id), ', `edit_time` = ', QUOTE(DATE_FORMAT(v_now, '%Y-%m-%d %H:%i:%s')));
+
+    SET v_count = JSON_LENGTH(in_json_data);
+    SET v_i = 0;
+
+    WHILE v_i < v_count DO
+        SET v_key = JSON_UNQUOTE(JSON_EXTRACT(JSON_KEYS(in_json_data), CONCAT('$[', v_i, ']')));
+
+        -- 判断字段是否合法
+        IF (SELECT COUNT(*) FROM column_cache WHERE COLUMN_NAME = v_key) = 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid update field name';
+        END IF;
+
+        -- 跳过保留字段和主键字段
+        IF v_key NOT IN ('delete_time', 'delete_user_id', 'edit_time', 'edit_user_id', 'add_time', 'add_user_id', v_pk_name) THEN
+            -- 读取字段类型
+            SELECT DATA_TYPE INTO v_field_type FROM column_cache WHERE COLUMN_NAME = v_key;
+
+            SET v_raw_value = JSON_EXTRACT(in_json_data, CONCAT('$.', v_key));
+
+            IF JSON_TYPE(v_raw_value) = 'NULL' THEN
+                SET v_sql_value = 'NULL';
+            ELSEIF JSON_TYPE(v_raw_value) = 'BOOLEAN' THEN
+                SET v_sql_value = IF(JSON_UNQUOTE(v_raw_value) = 'true', '1', '0');
+            ELSEIF v_field_type = 'datetime' AND JSON_TYPE(v_raw_value) = 'INTEGER' THEN
+                SET v_sql_value = QUOTE(DATE_FORMAT(DATE_ADD(v_now, INTERVAL JSON_UNQUOTE(v_raw_value) SECOND), '%Y-%m-%d %H:%i:%s'));
+            ELSEIF JSON_TYPE(v_raw_value) IN ('OBJECT', 'ARRAY') THEN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unsupported value type for field';
+            ELSE
+                SET v_sql_value = QUOTE(JSON_UNQUOTE(v_raw_value));
+            END IF;
+
+            SET v_set_clause = CONCAT(v_set_clause, ', `', v_key, '` = ', v_sql_value);
+        END IF;
+
+        SET v_i = v_i + 1;
+    END WHILE;
+
+    -- 拼接主键列表
+    SET v_pk_total = JSON_LENGTH(in_pk_values);
+    SET v_pk_sql = '';
+    SET v_pk_i = 0;
+
+    WHILE v_pk_i < v_pk_total DO
+        SET v_pk_value = JSON_UNQUOTE(JSON_EXTRACT(in_pk_values, CONCAT('$[', v_pk_i, ']')));
+        IF v_pk_value NOT REGEXP '^[a-zA-Z0-9_-]{1,64}$' THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid primary key value';
+        END IF;
+        SET v_pk_sql = IF(v_pk_i = 0, QUOTE(v_pk_value), CONCAT(v_pk_sql, ',', QUOTE(v_pk_value)));
+        SET v_pk_i = v_pk_i + 1;
+    END WHILE;
+
+    -- 执行更新
+    SET @sql_text = CONCAT('UPDATE `', in_table_name, '` SET ', v_set_clause,
+                           ' WHERE `', v_pk_name, '` IN (', v_pk_sql, ')');
+
+    PREPARE stmt FROM @sql_text;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+
+    DROP TEMPORARY TABLE IF EXISTS column_cache;
+END
+;;
+delimiter ;
+
+SET FOREIGN_KEY_CHECKS = 1;

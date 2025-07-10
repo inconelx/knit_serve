@@ -21,8 +21,6 @@ from cryptography.hazmat.primitives import serialization, hashes
 load_dotenv()
 
 app = Flask(__name__)
-# CORS(app)
-CORS(app, origins=['https://localhost:5173', 'https://192.168.0.104:5173'])
 
 # JWT设置
 JWT_SECRET = os.getenv('JWT_SECRET')    # 用于生成token的密钥
@@ -63,7 +61,7 @@ def get_db_connection():
 @app.before_request
 def check_login_token():
     # 排除登录接口和其他公开接口
-    open_paths = {'/api/login', '/api/login-before', '/stream', '/api/printer/login'}
+    open_paths = {'/api/login', '/api/login-before', '/api/stream', '/api/printer/login'}
     employee_paths = {
         '/api/logout',
         '/api/check-login',
@@ -71,7 +69,8 @@ def check_login_token():
         '/api/combobox',
         '/api/employee/cloth/add',
         '/api/employee/cloth/query',
-        '/api/employee/cloth/update'
+        '/api/employee/cloth/update',
+        '/api/employee/cloth/print'
     }
     if request.path in open_paths:
         return  # 跳过校验
@@ -91,7 +90,7 @@ def check_login_token():
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
         # 查询用户信息
-        sql = "SELECT user_id, user_name, is_admin, is_locked FROM sys_user WHERE user_id = %s"
+        sql = "SELECT user_id, user_name, is_admin, is_locked, print_allowed FROM sys_user WHERE user_id = %s"
         cursor.execute(sql, (result,))
         user = cursor.fetchone()
         cursor.close()
@@ -181,14 +180,17 @@ def printer_verify_token(token):
     except Exception:
         return False
 
-@app.route('/stream')
+@app.route('/api/stream')
 def stream():
     token = request.headers.get("Authorization")
     if not token:
         return "Missing token", 401
     with printer_lock:
+        if printer_connected['connected']:
+            return jsonify({'error': 'already had printer connect'}), 403
         if not printer_verify_token(token):
             return "token expried or wrong", 401
+        printer_connected['connected'] = True
     def event_stream():
         with printer_lock:
             printer_connected['connected'] = True
@@ -309,7 +311,7 @@ def employee_cloth_query_with_pagination():
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
-        left join sys_user E on E.user_id = %s and A.add_user_id = E.user_id
+        join sys_user E on E.user_id = %s and A.add_user_id = E.user_id
         {where_sql}
         ORDER BY add_time DESC, cloth_id DESC
         LIMIT %s OFFSET %s
@@ -352,15 +354,13 @@ def employee_cloth_add():
         json_str = json.dumps(json_data, ensure_ascii=False)
 
         conn = get_db_connection()
-        cursor = conn.cursor()
-
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         cursor.callproc('super_insert', ['knit_cloth', request.user['user_id'], json_str])
-        conn.commit()
-
+        sql_data = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        return jsonify({'message': 'Insert successful'}), 201
+        return jsonify({'message': 'Insert successful', 'insert_id': sql_data['super_insert_id']}), 201
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -419,6 +419,54 @@ def employee_cloth_update():
 
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500    
+
+@app.route('/api/employee/cloth/print', methods=['POST'])
+def employee_cloth_print():
+    try:
+        data = request.get_json()
+        pk_value = data.get('pk_value')
+
+        if not pk_value:
+            return jsonify({'error': 'Missing pk_value'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        sql = "SELECT add_user_id FROM knit_cloth WHERE cloth_id = %s"
+        cursor.execute(sql, (pk_value,))
+        searched_cloth = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if searched_cloth['add_user_id'] != request.user['user_id']:
+            return jsonify({'error': 'Not input user'}), 400
+        
+        if int.from_bytes(request.user['is_admin'], 'big') == 0 and int.from_bytes(request.user['print_allowed', 'big']) == 0:
+            return jsonify({'error': 'Print not allowed, please contact the administrator'}), 400
+# 
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.callproc('knit_cloth_print', [pk_value])
+        sql_data = cursor.fetchone()
+        if cursor.nextset():
+            qr_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        message_queue.put({
+            'type': 'print',
+            'print_label': 'knit_cloth_print',
+            'label_data': sql_data,
+            'qr_data': qr_data
+        })
+
+        return jsonify({'status': 'ok'}), 200
+    
+    except MySQLdb.Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
 @app.route('/api/delivery/cloth/update', methods=['POST'])
 def delivery_cloth_update():
@@ -485,17 +533,15 @@ def insert_generic():
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
-
+# 
         conn = get_db_connection()
-        cursor = conn.cursor()
-
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         cursor.callproc('super_insert', [table_name, request.user['user_id'], json_str])
-        conn.commit()
-
+        sql_data = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        return jsonify({'message': 'Insert successful'}), 201
+        return jsonify({'message': 'Insert successful', 'insert_id': sql_data['super_insert_id']}), 201
 
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -1149,6 +1195,7 @@ def login():
                 'token': token,
                 'expires_seconds': JWT_EXPIRE_SECONDS,
                 'user_name': user['user_name'],
+                'is_admin': (int.from_bytes(user['is_admin'], 'big') == 1)
             }), 201
         else:
             return jsonify({'error': 'Invalid username or password'}), 401
@@ -1181,6 +1228,7 @@ def refresh_token():
             'token': new_token,
             'expires_seconds': JWT_EXPIRE_SECONDS,
             'user_name': request.user['user_name'],
+            'is_admin': (int.from_bytes(request.user['is_admin'], 'big') == 1)
         }), 201
     else:
         return jsonify({'error': err}), 400
@@ -1196,5 +1244,7 @@ def test_info():
         }), 200
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
+    # CORS(app)
+    # CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173'])
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
