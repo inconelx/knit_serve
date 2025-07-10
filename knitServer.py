@@ -70,7 +70,8 @@ def check_login_token():
         '/api/employee/cloth/add',
         '/api/employee/cloth/query',
         '/api/employee/cloth/update',
-        '/api/employee/cloth/print'
+        '/api/employee/cloth/print',
+        '/api/machine/search'
     }
     if request.path in open_paths:
         return  # 跳过校验
@@ -357,6 +358,9 @@ def employee_cloth_add():
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         cursor.callproc('super_insert', ['knit_cloth', request.user['user_id'], json_str])
         sql_data = cursor.fetchone()
+        while cursor.nextset():
+            pass
+        conn.commit()
         cursor.close()
         conn.close()
 
@@ -423,6 +427,10 @@ def employee_cloth_update():
 @app.route('/api/employee/cloth/print', methods=['POST'])
 def employee_cloth_print():
     try:
+        with printer_lock:
+            if not printer_connected['connected']:
+                return jsonify({'error': 'printer not connected'}), 403
+            
         data = request.get_json()
         pk_value = data.get('pk_value')
 
@@ -533,11 +541,14 @@ def insert_generic():
             return jsonify({'error': 'Missing required parameters'}), 400
 
         json_str = json.dumps(json_data, ensure_ascii=False)
-# 
+
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         cursor.callproc('super_insert', [table_name, request.user['user_id'], json_str])
         sql_data = cursor.fetchone()
+        while cursor.nextset():
+            pass
+        conn.commit()
         cursor.close()
         conn.close()
 
@@ -1000,6 +1011,7 @@ def query_user_with_pagination():
             'user_name': 'user_name',
             'real_name': 'real_name',
             'user_status': '(is_locked + 1) * (1 - is_admin)',
+            'print_status': '(1 - print_allowed) * (1 - is_admin)',
         }
         allowed_date_range_fields = {
             'add_time': 'add_time'
@@ -1009,7 +1021,8 @@ def query_user_with_pagination():
 
         # 查询数据
         query_sql = f"""
-        SELECT user_id, user_name, real_name, (is_locked + 1) * (1 - is_admin) AS user_status, add_time, edit_time, note
+        SELECT user_id, user_name, real_name, (is_locked + 1) * (1 - is_admin) AS user_status,
+        (1 - print_allowed) * (1 - is_admin) AS print_status, add_time, edit_time, note
         FROM sys_user
         {where_sql}
         ORDER BY add_time DESC
