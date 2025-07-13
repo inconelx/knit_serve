@@ -346,13 +346,20 @@ def employee_cloth_query_with_pagination():
 @app.route('/api/employee/cloth/add', methods=['POST'])
 def employee_cloth_add():
     try:
+        allowed_fields = { 'cloth_order_id', 'cloth_machine_id', 'cloth_origin_weight', 'cloth_weight_correct', 'note' }
         data = request.get_json()
         json_data = data.get('json_data')
 
         if not json_data:
             return jsonify({'error': 'Missing json_data'}), 400
 
-        json_str = json.dumps(json_data, ensure_ascii=False)
+        insert_data = {}
+
+        for field, value in json_data.items():
+            if field in allowed_fields:
+                insert_data[field] = value
+
+        json_str = json.dumps(insert_data, ensure_ascii=False)
 
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
