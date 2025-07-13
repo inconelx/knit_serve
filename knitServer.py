@@ -2,7 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, make_response, Response, stream_with_context
-from flask_cors import CORS
+# from flask_cors import CORS
 import bcrypt
 import datetime
 import MySQLdb
@@ -683,7 +683,8 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
             elif isinstance(value, (str, int, float)):
                 if field in fuzzy_fields:
                     where_clauses.append(f"{allowed_fields[field]} LIKE %s")
-                    params.append(f"%{value.replace('%', r'\%')}%")
+                    # params.append(f"%{value.replace('%', r'\%')}%")
+                    params.append('%' + value.replace('%', r'\%') + '%')
                 else:
                     where_clauses.append(f"{allowed_fields[field]} = %s")
                     params.append(value)

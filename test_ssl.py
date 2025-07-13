@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 # === 配置 ===
-server_ip = "192.168.1.102"
+server_ip = "121.196.238.215"
 output_dir = "../cert"
 os.makedirs(output_dir, exist_ok=True)
 
