@@ -456,7 +456,7 @@ def employee_cloth_print():
         if searched_cloth['add_user_id'] != request.user['user_id']:
             return jsonify({'error': 'Not input user'}), 400
         
-        if int.from_bytes(request.user['is_admin'], 'big') == 0 and int.from_bytes(request.user['print_allowed', 'big']) == 0:
+        if int.from_bytes(request.user['is_admin'], 'big') == 0 and int.from_bytes(request.user['print_allowed'], 'big') == 0:
             return jsonify({'error': 'Print not allowed, please contact the administrator'}), 400
 # 
         conn = get_db_connection()
