@@ -2,7 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, make_response, Response, stream_with_context
-# from flask_cors import CORS
+from flask_cors import CORS
 import bcrypt
 import datetime
 import MySQLdb
@@ -234,26 +234,44 @@ def notify():
         if not print_label or not print_param:
             return jsonify({'error': 'Missing required parameters'}), 400
         
-        if print_label not in {'knit_cloth_print'}:
-            return jsonify({'error': 'Invalid print_label'}), 400
+        if print_label == 'knit_cloth_print':
+            conn = get_db_connection()
+            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+            cursor.callproc(print_label, [print_param])
+            sql_data = cursor.fetchone()
+            if cursor.nextset():
+                qr_data = cursor.fetchone()
+            cursor.close()
+            conn.close()
 
-        conn = get_db_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-        cursor.callproc(print_label, [print_param])
-        sql_data = cursor.fetchone()
-        if cursor.nextset():
-            qr_data = cursor.fetchone()
-        cursor.close()
-        conn.close()
+            message_queue.put({
+                'type': 'print',
+                'print_label': print_label,
+                'label_data': sql_data,
+                'qr_data': qr_data
+            })
 
-        message_queue.put({
-            'type': 'print',
-            'print_label': print_label,
-            'label_data': sql_data,
-            'qr_data': qr_data
-        })
+            return jsonify({'status': 'ok'}), 200
+        
+        if print_label == 'knit_delivery_print':
+            conn = get_db_connection()
+            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+            cursor.callproc(print_label, [print_param])
+            sql_data = cursor.fetchall()
+            cursor.close()
+            conn.close()
 
-        return jsonify({'status': 'ok'}), 200
+            for page in sql_data:
+                message_queue.put({
+                    'type': 'print',
+                    'print_label': print_label,
+                    'label_data': page,
+                    'qr_data': None
+                })
+
+            return jsonify({'status': 'ok'}), 200
+        
+        return jsonify({'error': 'Invalid print_label'}), 400
     
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -1266,6 +1284,8 @@ def test_info():
 
 if __name__ == '__main__':
     # CORS(app)
-    # CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173'])
+    # CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173']) #本地测试时启用
+
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+
     # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, ssl_context=("../cert/server_cert.pem", "../cert/server_key.pem"))
