@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 11/07/2025 00:03:43
+ Date: 01/09/2025 22:32:11
 */
 
 SET NAMES utf8mb4;
@@ -739,6 +739,88 @@ BEGIN
 	left join sys_user D on A.add_user_id = D.user_id
 	where A.cloth_id = print_cloth_id;
 	select print_cloth_id AS qr_code;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Procedure structure for knit_delivery_print
+-- ----------------------------
+DROP PROCEDURE IF EXISTS `knit_delivery_print`;
+delimiter ;;
+CREATE PROCEDURE `knit_delivery_print`(IN p_delivery_id VARCHAR(50))
+BEGIN
+  DECLARE i INT DEFAULT 0;
+  SET @sql = NULL;
+
+  -- 1) 建临时结果表
+  DROP TEMPORARY TABLE IF EXISTS tmp_result;
+	DROP TEMPORARY TABLE IF EXISTS tmp_summary;
+  SET @create_sql = 'CREATE TEMPORARY TABLE tmp_result (
+      cloth_machine_id VARCHAR(50),
+      cloth_order_id VARCHAR(50),
+      bucket_id INT, ';
+  SET i = 0;
+  WHILE i < 100 DO
+    SET @create_sql = CONCAT(@create_sql, 'q', i, ' DECIMAL(20,4),');
+    SET i = i + 1;
+  END WHILE;
+  SET @create_sql = CONCAT(@create_sql, 'row_qty DECIMAL(20,4))');
+
+  PREPARE stmt FROM @create_sql;
+  EXECUTE stmt;
+  DEALLOCATE PREPARE stmt;
+
+  -- 2) 动态拼接 INSERT SELECT
+  SET @sql = 'INSERT INTO tmp_result
+    SELECT cloth_machine_id, cloth_order_id, (rn DIV 100) AS bucket_id, ';
+
+  SET i = 0;
+  WHILE i < 100 DO
+    SET @sql = CONCAT(@sql, 'MAX(CASE WHEN pos=', i, ' THEN cloth_calculate_weight END) AS q', i);
+    IF i < 99 THEN SET @sql = CONCAT(@sql, ', '); END IF;
+    SET i = i + 1;
+  END WHILE;
+
+  -- 计算每桶的总和 row_qty
+  SET @sql = CONCAT(@sql, ',
+    SUM(cloth_calculate_weight) AS row_qty
+    FROM (
+      SELECT
+        A.cloth_machine_id, A.cloth_order_id,
+        (A.cloth_origin_weight + COALESCE(B.order_cloth_add,0) + COALESCE(A.cloth_weight_correct,0)) AS cloth_calculate_weight,
+        ROW_NUMBER() OVER (PARTITION BY A.cloth_machine_id, A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1 AS rn,
+        (ROW_NUMBER() OVER (PARTITION BY A.cloth_machine_id, A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1) MOD 100 AS pos
+      FROM knit_cloth A
+      LEFT JOIN knit_order B ON A.cloth_order_id = B.order_id
+      WHERE A.cloth_delivery_id = ?
+    ) AS src
+    GROUP BY cloth_machine_id, cloth_order_id, (rn DIV 100)
+  ');
+
+  -- 3) 绑定参数执行
+  SET @bind_delivery = p_delivery_id;
+
+  PREPARE stmt FROM @sql;
+  EXECUTE stmt USING @bind_delivery;
+  DEALLOCATE PREPARE stmt;
+	
+	-- 4) 计算汇总
+	CREATE TEMPORARY TABLE tmp_summary 
+	SELECT cloth_machine_id, cloth_order_id, SUM(row_qty) AS total_qty
+	FROM tmp_result
+	GROUP BY cloth_machine_id, cloth_order_id;
+	
+	-- 4) 查询结果
+  SELECT ROW_NUMBER() OVER (ORDER BY B.order_no, C.machine_name) AS page_no,
+	B.order_no, B.order_cloth_name, B.order_cloth_color, 
+  C.machine_name, D.delivery_id, D.delivery_no, E.total_qty, A.*
+	FROM tmp_result A
+	LEFT JOIN knit_order B ON A.cloth_order_id = B.order_id
+	LEFT JOIN knit_machine C ON A.cloth_machine_id = C.machine_id
+	LEFT JOIN knit_delivery D ON D.delivery_id = p_delivery_id
+	LEFT JOIN tmp_summary E ON A.cloth_machine_id = E.cloth_machine_id AND A.cloth_order_id = E.cloth_order_id
+	ORDER BY B.order_no, C.machine_name;
 END
 ;;
 delimiter ;
