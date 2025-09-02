@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 01/09/2025 22:32:11
+ Date: 02/09/2025 16:49:28
 */
 
 SET NAMES utf8mb4;
@@ -112,7 +112,7 @@ CREATE TABLE `knit_cloth`  (
 -- ----------------------------
 -- Records of knit_cloth
 -- ----------------------------
-INSERT INTO `knit_cloth` VALUES ('CLT-250624-1', 'ORD-250620-2', 'MACH-250616-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 11:56:03', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-1', 'ORD-250620-2', 'MACH-250616-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 11:56:03', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-01 22:36:32');
 INSERT INTO `knit_cloth` VALUES ('CLT-250624-2', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 12:47:41', 'ADMIN', NULL, NULL, NULL, NULL);
 INSERT INTO `knit_cloth` VALUES ('CLT-250624-3', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 13:10:12', 'ADMIN', NULL, NULL, NULL, NULL);
 INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0101', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:35', 'ADMIN', NULL, NULL, NULL, NULL);
@@ -757,15 +757,20 @@ BEGIN
   DROP TEMPORARY TABLE IF EXISTS tmp_result;
 	DROP TEMPORARY TABLE IF EXISTS tmp_summary;
   SET @create_sql = 'CREATE TEMPORARY TABLE tmp_result (
-      cloth_machine_id VARCHAR(50),
       cloth_order_id VARCHAR(50),
       bucket_id INT, ';
   SET i = 0;
   WHILE i < 100 DO
-    SET @create_sql = CONCAT(@create_sql, 'q', i, ' DECIMAL(20,4),');
+    SET @create_sql = CONCAT(@create_sql, 'q', i, ' DECIMAL(20,2),');
     SET i = i + 1;
   END WHILE;
-  SET @create_sql = CONCAT(@create_sql, 'row_qty DECIMAL(20,4))');
+	SET i = 0;
+	WHILE i < 10 DO
+    SET @create_sql = CONCAT(@create_sql, 's', i, ' DECIMAL(20,2),');
+    SET i = i + 1;
+  END WHILE;
+  SET @create_sql = CONCAT(@create_sql, 'row_qty DECIMAL(20,2),');
+	SET @create_sql = CONCAT(@create_sql, 'row_count INT)');
 
   PREPARE stmt FROM @create_sql;
   EXECUTE stmt;
@@ -773,7 +778,7 @@ BEGIN
 
   -- 2) 动态拼接 INSERT SELECT
   SET @sql = 'INSERT INTO tmp_result
-    SELECT cloth_machine_id, cloth_order_id, (rn DIV 100) AS bucket_id, ';
+    SELECT cloth_order_id, (rn DIV 100) AS bucket_id, ';
 
   SET i = 0;
   WHILE i < 100 DO
@@ -782,20 +787,26 @@ BEGIN
     SET i = i + 1;
   END WHILE;
 
+	SET i = 0;
+	WHILE i < 100 DO
+			SET @sql = CONCAT(@sql, ', SUM(CASE WHEN pos BETWEEN ', i, ' AND ', i + 9,
+					' THEN cloth_calculate_weight END) AS s', i DIV 10);
+			SET i = i + 10;
+	END WHILE;
+
   -- 计算每桶的总和 row_qty
   SET @sql = CONCAT(@sql, ',
-    SUM(cloth_calculate_weight) AS row_qty
+    SUM(cloth_calculate_weight) AS row_qty, COUNT(cloth_calculate_weight) AS row_count
     FROM (
-      SELECT
-        A.cloth_machine_id, A.cloth_order_id,
+      SELECT A.cloth_order_id,
         (A.cloth_origin_weight + COALESCE(B.order_cloth_add,0) + COALESCE(A.cloth_weight_correct,0)) AS cloth_calculate_weight,
-        ROW_NUMBER() OVER (PARTITION BY A.cloth_machine_id, A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1 AS rn,
-        (ROW_NUMBER() OVER (PARTITION BY A.cloth_machine_id, A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1) MOD 100 AS pos
+        ROW_NUMBER() OVER (PARTITION BY A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1 AS rn,
+        (ROW_NUMBER() OVER (PARTITION BY A.cloth_order_id ORDER BY A.cloth_delivery_time) - 1) MOD 100 AS pos
       FROM knit_cloth A
       LEFT JOIN knit_order B ON A.cloth_order_id = B.order_id
       WHERE A.cloth_delivery_id = ?
     ) AS src
-    GROUP BY cloth_machine_id, cloth_order_id, (rn DIV 100)
+    GROUP BY cloth_order_id, (rn DIV 100)
   ');
 
   -- 3) 绑定参数执行
@@ -807,20 +818,19 @@ BEGIN
 	
 	-- 4) 计算汇总
 	CREATE TEMPORARY TABLE tmp_summary 
-	SELECT cloth_machine_id, cloth_order_id, SUM(row_qty) AS total_qty
+	SELECT cloth_order_id, SUM(row_qty) AS total_qty
 	FROM tmp_result
-	GROUP BY cloth_machine_id, cloth_order_id;
+	GROUP BY cloth_order_id;
 	
 	-- 4) 查询结果
-  SELECT ROW_NUMBER() OVER (ORDER BY B.order_no, C.machine_name) AS page_no,
+  SELECT ROW_NUMBER() OVER (ORDER BY B.order_no) AS page_no,
 	B.order_no, B.order_cloth_name, B.order_cloth_color, 
-  C.machine_name, D.delivery_id, D.delivery_no, E.total_qty, A.*
+  D.delivery_id, D.delivery_no, E.total_qty, A.*
 	FROM tmp_result A
 	LEFT JOIN knit_order B ON A.cloth_order_id = B.order_id
-	LEFT JOIN knit_machine C ON A.cloth_machine_id = C.machine_id
 	LEFT JOIN knit_delivery D ON D.delivery_id = p_delivery_id
-	LEFT JOIN tmp_summary E ON A.cloth_machine_id = E.cloth_machine_id AND A.cloth_order_id = E.cloth_order_id
-	ORDER BY B.order_no, C.machine_name;
+	LEFT JOIN tmp_summary E ON A.cloth_order_id = E.cloth_order_id
+	ORDER BY B.order_no;
 END
 ;;
 delimiter ;

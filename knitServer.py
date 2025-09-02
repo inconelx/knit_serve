@@ -2,7 +2,6 @@ import json
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, make_response, Response, stream_with_context
-from flask_cors import CORS
 import bcrypt
 import datetime
 import MySQLdb
@@ -1283,6 +1282,7 @@ def test_info():
         }), 200
 
 if __name__ == '__main__':
+    # from flask_cors import CORS
     # CORS(app)
     # CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173']) #本地测试时启用
 
