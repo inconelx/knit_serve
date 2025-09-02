@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 02/09/2025 16:49:28
+ Date: 02/09/2025 17:39:12
 */
 
 SET NAMES utf8mb4;
@@ -570,6 +570,22 @@ INSERT INTO `serial_code_table` VALUES ('ord', '2025-06-20', 2);
 INSERT INTO `serial_code_table` VALUES ('user', '2025-07-09', 1);
 
 -- ----------------------------
+-- Table structure for sys_log
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_log`;
+CREATE TABLE `sys_log`  (
+  `log_id` int NOT NULL AUTO_INCREMENT,
+  `log_procedure_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `log_procedure_params` json NULL,
+  `log_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`log_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_log
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for sys_user
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_user`;
@@ -938,6 +954,16 @@ BEGIN
     PREPARE stmt1 FROM @sql_update; EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
     PREPARE stmt2 FROM @sql_insert; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;
     PREPARE stmt3 FROM @sql_delete; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
+		
+		INSERT INTO sys_log(log_procedure_name, log_procedure_params)
+    VALUES (
+        'super_delete',
+        JSON_OBJECT(
+            'in_table_name', in_table_name,
+						'in_user_id', in_user_id,
+						'in_pk_values', in_pk_values
+        )
+    );
 END
 ;;
 delimiter ;
@@ -1065,6 +1091,16 @@ BEGIN
 		select v_new_id AS super_insert_id;
 
     DROP TEMPORARY TABLE IF EXISTS column_cache;
+		
+		INSERT INTO sys_log(log_procedure_name, log_procedure_params)
+    VALUES (
+        'super_insert',
+        JSON_OBJECT(
+            'in_table_name', in_table_name,
+						'in_user_id', in_user_id,
+						'in_json_data', in_json_data
+        )
+    );
 END
 ;;
 delimiter ;
@@ -1200,6 +1236,17 @@ BEGIN
     DEALLOCATE PREPARE stmt;
 
     DROP TEMPORARY TABLE IF EXISTS column_cache;
+		
+		INSERT INTO sys_log(log_procedure_name, log_procedure_params)
+    VALUES (
+        'super_update',
+        JSON_OBJECT(
+            'in_table_name', in_table_name,
+						'in_user_id', in_user_id,
+						'in_pk_values', in_pk_values,
+						'in_json_data', in_json_data
+        )
+    );
 END
 ;;
 delimiter ;
