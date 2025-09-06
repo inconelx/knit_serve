@@ -215,12 +215,7 @@ def stream():
                                 cursor.close()
                                 conn.close()
 
-                                yield f"data: {json.dumps({
-                                    'type': 'print',
-                                    'print_label': 'knit_cloth_print',
-                                    'label_data': sql_data,
-                                    'qr_data': qr_data
-                                }, default=str)}\n\n"
+                                yield f"data: {json.dumps({'type': 'print', 'print_label': 'knit_cloth_print', 'label_data': sql_data, 'qr_data': qr_data}, default=str)}\n\n"
 
                             case 'knit_delivery_print':
                                 conn = get_db_connection()
@@ -231,12 +226,7 @@ def stream():
                                 conn.close()
 
                                 for page_data in sql_data:
-                                    yield f"data: {json.dumps({
-                                        'type': 'print',
-                                        'print_label': 'knit_delivery_print',
-                                        'label_data': page_data,
-                                        'qr_data': None
-                                    }, default=str)}\n\n"
+                                    yield f"data: {json.dumps({'type': 'print', 'print_label': 'knit_delivery_print', 'label_data': page_data, 'qr_data': None}, default=str)}\n\n"
                             
                             case _:
                                 # 未知标签发送错误
