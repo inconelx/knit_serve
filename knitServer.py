@@ -201,10 +201,52 @@ def stream():
                 # 优先推送消息队列内容
                 try:
                     msg = message_queue.get(timeout=5)
-                    yield f"data: {json.dumps(msg, default=str)}\n\n"
-                except queue.Empty:
-                    # 队列空时发送心跳
+                    if not msg['print_label'] or not msg['print_param']:
+                        yield f"data: {json.dumps({'type': 'warning', 'info': 'Invalid message'})}\n\n"
+                    else:
+                        match msg['print_label']:
+                            case 'knit_cloth_print':
+                                conn = get_db_connection()
+                                cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+                                cursor.callproc('knit_cloth_print', [msg['print_param']])
+                                sql_data = cursor.fetchone()
+                                if cursor.nextset():
+                                    qr_data = cursor.fetchone()
+                                cursor.close()
+                                conn.close()
+
+                                yield f"data: {json.dumps({
+                                    'type': 'print',
+                                    'print_label': 'knit_cloth_print',
+                                    'label_data': sql_data,
+                                    'qr_data': qr_data
+                                }, default=str)}\n\n"
+
+                            case 'knit_delivery_print':
+                                conn = get_db_connection()
+                                cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+                                cursor.callproc('knit_delivery_print', [msg['print_param']])
+                                sql_data = cursor.fetchall()
+                                cursor.close()
+                                conn.close()
+
+                                for page_data in sql_data:
+                                    yield f"data: {json.dumps({
+                                        'type': 'print',
+                                        'print_label': 'knit_delivery_print',
+                                        'label_data': page_data,
+                                        'qr_data': None
+                                    }, default=str)}\n\n"
+                            
+                            case _:
+                                # 未知标签发送错误
+                                yield f"data: {json.dumps({'type': 'warning', 'info': 'Invalid print_label'})}\n\n"
+                except (queue.Empty, MySQLdb.Error):
+                    # 队列空发送心跳
                     yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+                except (queue.Empty, MySQLdb.Error):
+                    # sql异常发送错误
+                    yield f"data: {json.dumps({'type': 'warning', 'info': 'Sql error'})}\n\n"
 
                 # 定时刷新 token
                 now_second = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
@@ -229,49 +271,23 @@ def notify():
             
         data = request.get_json()
         print_label = data.get('print_label')
-        print_param = data.get('print_param')
-        if not print_label or not print_param:
+        print_param_list = data.get('print_param_list')
+
+        if not print_label or not print_param_list:
             return jsonify({'error': 'Missing required parameters'}), 400
         
-        if print_label == 'knit_cloth_print':
-            conn = get_db_connection()
-            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-            cursor.callproc(print_label, [print_param])
-            sql_data = cursor.fetchone()
-            if cursor.nextset():
-                qr_data = cursor.fetchone()
-            cursor.close()
-            conn.close()
+        allow_labels = {'knit_cloth_print', 'knit_delivery_print'}
 
+        if print_label not in allow_labels:
+            return jsonify({'error': 'Invalid print_label'}), 400
+        
+        for print_param in print_param_list:
             message_queue.put({
-                'type': 'print',
                 'print_label': print_label,
-                'label_data': sql_data,
-                'qr_data': qr_data
+                'print_param': print_param
             })
 
-            return jsonify({'status': 'ok'}), 200
-        
-        if print_label == 'knit_delivery_print':
-            conn = get_db_connection()
-            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-            cursor.callproc(print_label, [print_param])
-            sql_data = cursor.fetchall()
-            cursor.close()
-            conn.close()
-
-            for page in sql_data:
-                message_queue.put({
-                    'type': 'print',
-                    'print_label': print_label,
-                    'label_data': page,
-                    'qr_data': None
-                })
-
-            return jsonify({'status': 'ok'}), 200
-        
-        return jsonify({'error': 'Invalid print_label'}), 400
-    
+        return jsonify({'status': 'ok'}), 202
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
 
@@ -475,24 +491,13 @@ def employee_cloth_print():
         
         if int.from_bytes(request.user['is_admin'], 'big') == 0 and int.from_bytes(request.user['print_allowed'], 'big') == 0:
             return jsonify({'error': 'Print not allowed, please contact the administrator'}), 400
-# 
-        conn = get_db_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-        cursor.callproc('knit_cloth_print', [pk_value])
-        sql_data = cursor.fetchone()
-        if cursor.nextset():
-            qr_data = cursor.fetchone()
-        cursor.close()
-        conn.close()
 
         message_queue.put({
-            'type': 'print',
-            'print_label': 'knit_cloth_print',
-            'label_data': sql_data,
-            'qr_data': qr_data
-        })
+                'print_label': 'knit_cloth_print',
+                'print_param': pk_value
+            })
 
-        return jsonify({'status': 'ok'}), 200
+        return jsonify({'status': 'ok'}), 202
     
     except MySQLdb.Error as e:
         return jsonify({'error': str(e)}), 500
