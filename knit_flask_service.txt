@@ -1,0 +1,13 @@
+[Unit]
+Description=Flask App with Waitress
+After=network.target mysql.service
+[Service]
+User=flaskapp
+Group=flaskapp
+WorkingDirectory=/opt/knit_sys/knit_flask
+Environment="PATH=/opt/knit_sys/knit_flask/venv/bin" 
+ExecStart=/opt/knit_sys/knit_flask/venv/bin/python server.py
+Restart=always
+RestartSec=5s
+[Install]
+WantedBy=multi-user.target
