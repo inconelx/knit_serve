@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 02/09/2025 17:39:12
+ Date: 10/09/2025 09:58:35
 */
 
 SET NAMES utf8mb4;
@@ -323,6 +323,7 @@ INSERT INTO `knit_company_del` VALUES ('COMP-250706-0002', '25', 0, '25', '2025-
 INSERT INTO `knit_company_del` VALUES ('COMP-250710-0001', '123', 0, '123', '2025-07-10 23:52:34', 'ADMIN', NULL, NULL, '2025-07-10 23:51:33', 'ADMIN', NULL);
 INSERT INTO `knit_company_del` VALUES ('COMP-250710-0002', '123', 0, '123', '2025-07-10 23:54:34', 'ADMIN', NULL, NULL, '2025-07-10 23:52:40', 'ADMIN', NULL);
 INSERT INTO `knit_company_del` VALUES ('COMP-250710-0003', '234', 0, '234', '2025-07-10 23:54:34', 'ADMIN', NULL, NULL, '2025-07-10 23:54:30', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250910-0001', '123456789', 0, '1234', '2025-09-10 09:53:26', 'ADMIN', NULL, NULL, '2025-09-10 09:52:53', 'ADMIN', NULL);
 INSERT INTO `knit_company_del` VALUES ('COMP250626000001', '159', 0, '159', '2025-06-26 17:05:49', 'ADMIN', NULL, NULL, '2025-06-26 17:04:43', 'ADMIN', NULL);
 
 -- ----------------------------
@@ -563,7 +564,7 @@ CREATE TABLE `serial_code_table`  (
 -- ----------------------------
 INSERT INTO `serial_code_table` VALUES ('clt', '2025-06-24', 4);
 INSERT INTO `serial_code_table` VALUES ('clth', '2025-07-10', 4);
-INSERT INTO `serial_code_table` VALUES ('comp', '2025-07-10', 3);
+INSERT INTO `serial_code_table` VALUES ('comp', '2025-09-10', 1);
 INSERT INTO `serial_code_table` VALUES ('dlvy', '2025-07-05', 1);
 INSERT INTO `serial_code_table` VALUES ('mach', '2025-06-24', 7);
 INSERT INTO `serial_code_table` VALUES ('ord', '2025-06-20', 2);
@@ -579,11 +580,13 @@ CREATE TABLE `sys_log`  (
   `log_procedure_params` json NULL,
   `log_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of sys_log
 -- ----------------------------
+INSERT INTO `sys_log` VALUES (1, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"company_name\": \"123456789\", \"company_type\": 0, \"company_abbreviation\": \"1234\"}, \"in_table_name\": \"knit_company\"}', '2025-09-10 09:52:53');
+INSERT INTO `sys_log` VALUES (2, 'super_delete', '{\"in_user_id\": \"ADMIN\", \"in_pk_values\": [\"COMP-250910-0001\"], \"in_table_name\": \"knit_company\"}', '2025-09-10 09:53:26');
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -748,7 +751,7 @@ BEGIN
 	B.order_no, B.order_cloth_name, B.order_cloth_color,
 	C.machine_name,
 	D.user_name AS add_user_name,
-	(A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) AS cloth_calculate_weight
+	A.cloth_origin_weight
 	from knit_cloth A
 	left join knit_order B on A.cloth_order_id = B.order_id
 	left join knit_machine C on A.cloth_machine_id = C.machine_id
@@ -872,6 +875,10 @@ BEGIN
 
     DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
 
+		IF in_table_name = "sys_log" THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
+
     -- 参数大小校验
     IF LENGTH(in_pk_values) > CONST_MAX_PK_VALUES_SIZE THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Primary key values JSON too large';
@@ -992,6 +999,10 @@ BEGIN
     DECLARE v_valid_table INT DEFAULT 0;
 
     DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
+
+		IF in_table_name = "sys_log" THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
 
     -- ✅ 限制 JSON 大小
     IF LENGTH(in_json_data) > CONST_MAX_JSON_DATA_SIZE THEN
@@ -1134,6 +1145,10 @@ BEGIN
     -- 大小限制阈值
     DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
     DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
+
+		IF in_table_name = "sys_log" THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    END IF;
 
     -- 参数大小校验
     IF LENGTH(in_pk_values) > CONST_MAX_PK_VALUES_SIZE THEN
