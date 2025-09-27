@@ -936,7 +936,8 @@ def query_cloth_with_pagination():
 
         # 查询总条数
         count_sql = f"""
-        select COUNT(*) as total
+        select COUNT(*) as total,
+        SUM(A.cloth_origin_weight + COALESCE(B.order_cloth_add, 0) + COALESCE(A.cloth_weight_correct, 0)) as sum_weight
         from knit_cloth A
         left join knit_order B on A.cloth_order_id = B.order_id
         left join knit_machine C on A.cloth_machine_id = C.machine_id
@@ -949,6 +950,7 @@ def query_cloth_with_pagination():
 
         return jsonify({
             "total": total['total'],
+            "sum_weight": total['sum_weight'],
             "page": page,
             "page_size": page_size,
             "records": rows
