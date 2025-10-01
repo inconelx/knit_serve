@@ -201,6 +201,10 @@ def stream():
                 # 优先推送消息队列内容
                 try:
                     msg = message_queue.get(timeout=5)
+                    if msg['stop_printer']:
+                        with printer_lock:
+                            printer_connected['jtis'].clear
+                        break
                     if not msg['print_label'] or not msg['print_param']:
                         yield f"data: {json.dumps({'type': 'warning', 'info': 'Invalid message'})}\n\n"
                     else:
@@ -231,10 +235,10 @@ def stream():
                             case _:
                                 # 未知标签发送错误
                                 yield f"data: {json.dumps({'type': 'warning', 'info': 'Invalid print_label'})}\n\n"
-                except (queue.Empty, MySQLdb.Error):
+                except queue.Empty:
                     # 队列空发送心跳
                     yield f"data: {json.dumps({'type': 'ping'})}\n\n"
-                except (queue.Empty, MySQLdb.Error):
+                except MySQLdb.Error:
                     # sql异常发送错误
                     yield f"data: {json.dumps({'type': 'warning', 'info': 'Sql error'})}\n\n"
 
@@ -260,22 +264,28 @@ def notify():
                 return jsonify({'error': 'printer not connected'}), 403
             
         data = request.get_json()
-        print_label = data.get('print_label')
-        print_param_list = data.get('print_param_list')
-
-        if not print_label or not print_param_list:
-            return jsonify({'error': 'Missing required parameters'}), 400
-        
-        allow_labels = {'knit_cloth_print', 'knit_delivery_print'}
-
-        if print_label not in allow_labels:
-            return jsonify({'error': 'Invalid print_label'}), 400
-        
-        for print_param in print_param_list:
+        stop_printer = data.get('stop_printer')
+        if stop_printer:
             message_queue.put({
-                'print_label': print_label,
-                'print_param': print_param
+                'stop_printer': True
             })
+        else:
+            print_label = data.get('print_label')
+            print_param_list = data.get('print_param_list')
+
+            if not print_label or not print_param_list:
+                return jsonify({'error': 'Missing required parameters'}), 400
+            
+            allow_labels = {'knit_cloth_print', 'knit_delivery_print'}
+
+            if print_label not in allow_labels:
+                return jsonify({'error': 'Invalid print_label'}), 400
+            
+            for print_param in print_param_list:
+                message_queue.put({
+                    'print_label': print_label,
+                    'print_param': print_param
+                })
 
         return jsonify({'status': 'ok'}), 202
     except MySQLdb.Error as e:
