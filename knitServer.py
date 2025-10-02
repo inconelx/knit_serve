@@ -201,11 +201,11 @@ def stream():
                 # 优先推送消息队列内容
                 try:
                     msg = message_queue.get(timeout=5)
-                    if msg['stop_printer']:
+                    if msg.get('stop_printer'):
                         with printer_lock:
                             printer_connected['jtis'].clear
                         break
-                    if not msg['print_label'] or not msg['print_param']:
+                    if not msg.get('print_label') or not msg.get('print_param'):
                         yield f"data: {json.dumps({'type': 'warning', 'info': 'Invalid message'})}\n\n"
                     else:
                         match msg['print_label']:
