@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 10/09/2025 09:58:35
+ Date: 17/10/2025 12:54:12
 */
 
 SET NAMES utf8mb4;
@@ -112,20 +112,21 @@ CREATE TABLE `knit_cloth`  (
 -- ----------------------------
 -- Records of knit_cloth
 -- ----------------------------
-INSERT INTO `knit_cloth` VALUES ('CLT-250624-1', 'ORD-250620-2', 'MACH-250616-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 11:56:03', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-01 22:36:32');
-INSERT INTO `knit_cloth` VALUES ('CLT-250624-2', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 12:47:41', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLT-250624-3', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-24 13:10:12', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0101', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:35', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0102', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:40', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0103', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:49', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0104', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:56:57', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0105', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:07', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0106', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:13', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0107', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 19:57:23', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0108', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:10:03', 'ADMIN', '2025-06-27 21:59:26', 'ADMIN', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0109', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-07-07 14:52:57', 'ADMIN', '2025-06-27 21:59:36', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-07-07 14:52:57');
-INSERT INTO `knit_cloth` VALUES ('CLTH-250706-0001', 'ORD-250620-1', 'MACH-250614-1', 25.00, NULL, NULL, '2025-07-10 22:48:56', 'ADMIN', '2025-07-06 17:45:27', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-07-10 13:59:42');
-INSERT INTO `knit_cloth` VALUES ('CLTH-250710-0004', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, NULL, NULL, '2025-07-10 23:57:09', 'USER-250703-0002', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-1', 'ORD-250620-2', 'MACH-250616-1', 15.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-24 11:56:03', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-2', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-24 12:47:41', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLT-250624-3', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-24 13:10:12', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0101', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:56:35', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0102', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:56:40', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0103', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:56:49', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0104', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:56:57', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0105', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:57:07', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0106', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:57:13', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0107', 'ORD-250620-1', 'MACH-250614-1', 15.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 19:57:23', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0108', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 21:59:26', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0109', 'ORD-250620-1', 'MACH-250614-1', 10.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-06-27 21:59:36', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250706-0001', 'ORD-250620-1', 'MACH-250614-1', 25.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-07-06 17:45:27', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250710-0004', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-07-10 23:57:09', 'USER-250703-0002', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
+INSERT INTO `knit_cloth` VALUES ('CLTH-250910-0002', 'ORD-250620-1', 'MACH-250614-1', 25.00, NULL, NULL, '2025-09-10 18:47:18', 'ADMIN', '2025-09-10 10:34:13', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-10 17:26:52');
 
 -- ----------------------------
 -- Table structure for knit_cloth_del
@@ -257,6 +258,7 @@ INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0099', NULL, NULL, 20.98, '202
 INSERT INTO `knit_cloth_del` VALUES ('CLTH-250627-0100', NULL, NULL, 20.99, '2025-06-27 19:42:43', 'ADMIN', '2025-06-27 19:42:22', 'ADMIN', '2025-06-27 15:43:34', 'ADMIN', NULL, NULL, NULL, NULL);
 INSERT INTO `knit_cloth_del` VALUES ('CLTH-250710-0002', NULL, NULL, 10.00, '2025-07-10 23:07:24', 'ADMIN', NULL, NULL, '2025-07-10 23:07:08', 'jkl', NULL, NULL, NULL, NULL);
 INSERT INTO `knit_cloth_del` VALUES ('CLTH-250710-0003', NULL, NULL, 10.00, '2025-07-10 23:54:49', 'ADMIN', NULL, NULL, '2025-07-10 23:48:39', 'jkl', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth_del` VALUES ('CLTH-250910-0001', 'ORD-250620-1', 'MACH-250614-1', 1234.00, '2025-09-10 10:34:08', 'ADMIN', NULL, NULL, '2025-09-10 10:33:58', 'ADMIN', NULL, NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for knit_company
@@ -282,7 +284,7 @@ CREATE TABLE `knit_company`  (
 -- ----------------------------
 -- Records of knit_company
 -- ----------------------------
-INSERT INTO `knit_company` VALUES ('COMP-250613-10', 'フォニイ', 0, 'フォニイ', NULL, NULL, '2025-07-10 22:56:55', 'ADMIN', '2025-06-13 15:48:10', 'ADMIN', 'ツミキ');
+INSERT INTO `knit_company` VALUES ('COMP-250613-10', 'フォニイ', 0, 'フォニイ', NULL, NULL, '2025-09-10 17:37:24', 'ADMIN', '2025-06-13 15:48:10', 'ADMIN', 'ツミキ');
 INSERT INTO `knit_company` VALUES ('COMP-250613-3', 'アンテナ39', 0, 'アンテナ39', NULL, NULL, '2025-06-19 17:00:25', 'ADMIN', '2025-06-13 15:07:29', 'ADMIN', '柊マグネタイト');
 INSERT INTO `knit_company` VALUES ('COMP-250613-8', 'ロミオとシンデレラ', 0, 'ロミオとシンデレラ', NULL, NULL, '2025-06-19 17:00:20', 'ADMIN', '2025-06-13 15:35:19', 'ADMIN', 'doriko');
 INSERT INTO `knit_company` VALUES ('COMP-250613-9', 'ざぁこ', 0, 'ざぁこ', NULL, NULL, '2025-06-19 17:00:15', 'ADMIN', '2025-06-13 15:45:30', 'ADMIN', '柊マグネタイト');
@@ -324,6 +326,9 @@ INSERT INTO `knit_company_del` VALUES ('COMP-250710-0001', '123', 0, '123', '202
 INSERT INTO `knit_company_del` VALUES ('COMP-250710-0002', '123', 0, '123', '2025-07-10 23:54:34', 'ADMIN', NULL, NULL, '2025-07-10 23:52:40', 'ADMIN', NULL);
 INSERT INTO `knit_company_del` VALUES ('COMP-250710-0003', '234', 0, '234', '2025-07-10 23:54:34', 'ADMIN', NULL, NULL, '2025-07-10 23:54:30', 'ADMIN', NULL);
 INSERT INTO `knit_company_del` VALUES ('COMP-250910-0001', '123456789', 0, '1234', '2025-09-10 09:53:26', 'ADMIN', NULL, NULL, '2025-09-10 09:52:53', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250910-0002', '1234', 0, '12', '2025-09-10 13:19:21', 'ADMIN', '2025-09-10 13:18:50', 'ADMIN', '2025-09-10 10:40:03', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250910-0003', '1234', 0, '123', '2025-09-10 13:20:20', 'ADMIN', NULL, NULL, '2025-09-10 13:20:17', 'ADMIN', NULL);
+INSERT INTO `knit_company_del` VALUES ('COMP-250910-0004', 'フォニイ1', 0, 'フォニイ1', '2025-09-10 13:22:14', 'ADMIN', NULL, NULL, '2025-09-10 13:22:05', 'ADMIN', 'ツミキ');
 INSERT INTO `knit_company_del` VALUES ('COMP250626000001', '159', 0, '159', '2025-06-26 17:05:49', 'ADMIN', NULL, NULL, '2025-06-26 17:04:43', 'ADMIN', NULL);
 
 -- ----------------------------
@@ -398,7 +403,7 @@ CREATE TABLE `knit_machine`  (
 -- Records of knit_machine
 -- ----------------------------
 INSERT INTO `knit_machine` VALUES ('MACH-250614-1', '1#', 'ORD-250620-1', NULL, NULL, '2025-06-24 14:04:48', 'ADMIN', '2025-06-14 17:59:07', 'ADMIN', '');
-INSERT INTO `knit_machine` VALUES ('MACH-250616-1', '2#', 'ORD-250620-2', NULL, NULL, '2025-06-24 14:04:42', 'ADMIN', '2025-06-16 18:09:40', 'ADMIN', '');
+INSERT INTO `knit_machine` VALUES ('MACH-250616-1', '2#', 'ORD-250620-2', NULL, NULL, '2025-09-10 13:54:01', 'ADMIN', '2025-06-16 18:09:40', 'ADMIN', NULL);
 
 -- ----------------------------
 -- Table structure for knit_machine_del
@@ -458,8 +463,8 @@ CREATE TABLE `knit_order`  (
 -- ----------------------------
 -- Records of knit_order
 -- ----------------------------
-INSERT INTO `knit_order` VALUES ('ORD-250620-1', 'test_1', NULL, NULL, '2025-06-27 22:13:23', 'ADMIN', '2025-06-20 16:18:56', 'ADMIN', NULL, 'COMP-250613-3', 'test_name', 'test_color', NULL, NULL, NULL, NULL);
-INSERT INTO `knit_order` VALUES ('ORD-250620-2', 'test_2', NULL, NULL, '2025-06-27 22:13:23', 'ADMIN', '2025-06-20 17:18:56', 'ADMIN', '123456', 'COMP-250613-8', '测试产品', '测试颜色', 100, 2000.00, NULL, NULL);
+INSERT INTO `knit_order` VALUES ('ORD-250620-1', 'test_1', NULL, NULL, '2025-09-27 15:21:18', 'ADMIN', '2025-06-20 16:18:56', 'ADMIN', NULL, 'COMP-250613-3', 'test_name', 'test_color', NULL, NULL, NULL, 0.10);
+INSERT INTO `knit_order` VALUES ('ORD-250620-2', 'test_2', NULL, NULL, '2025-09-27 15:21:18', 'ADMIN', '2025-06-20 17:18:56', 'ADMIN', '123456', 'COMP-250613-8', '测试产品', '测试颜色', 100, 2000.00, NULL, 0.10);
 
 -- ----------------------------
 -- Table structure for knit_order_del
@@ -563,8 +568,8 @@ CREATE TABLE `serial_code_table`  (
 -- Records of serial_code_table
 -- ----------------------------
 INSERT INTO `serial_code_table` VALUES ('clt', '2025-06-24', 4);
-INSERT INTO `serial_code_table` VALUES ('clth', '2025-07-10', 4);
-INSERT INTO `serial_code_table` VALUES ('comp', '2025-09-10', 1);
+INSERT INTO `serial_code_table` VALUES ('clth', '2025-09-10', 2);
+INSERT INTO `serial_code_table` VALUES ('comp', '2025-09-10', 4);
 INSERT INTO `serial_code_table` VALUES ('dlvy', '2025-07-05', 1);
 INSERT INTO `serial_code_table` VALUES ('mach', '2025-06-24', 7);
 INSERT INTO `serial_code_table` VALUES ('ord', '2025-06-20', 2);
@@ -580,13 +585,11 @@ CREATE TABLE `sys_log`  (
   `log_procedure_params` json NULL,
   `log_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 79 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of sys_log
 -- ----------------------------
-INSERT INTO `sys_log` VALUES (1, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"company_name\": \"123456789\", \"company_type\": 0, \"company_abbreviation\": \"1234\"}, \"in_table_name\": \"knit_company\"}', '2025-09-10 09:52:53');
-INSERT INTO `sys_log` VALUES (2, 'super_delete', '{\"in_user_id\": \"ADMIN\", \"in_pk_values\": [\"COMP-250910-0001\"], \"in_table_name\": \"knit_company\"}', '2025-09-10 09:53:26');
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -875,8 +878,13 @@ BEGIN
 
     DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
 
-		IF in_table_name = "sys_log" THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    -- 仅允许存在主键前缀名的表
+    IF NOT EXISTS (
+        SELECT 1
+        FROM table_primary_prefix
+        WHERE table_name = in_table_name
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not allowed';
     END IF;
 
     -- 参数大小校验
@@ -999,9 +1007,14 @@ BEGIN
     DECLARE v_valid_table INT DEFAULT 0;
 
     DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
-
-		IF in_table_name = "sys_log" THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+		
+    -- 仅允许存在主键前缀名的表
+    IF NOT EXISTS (
+        SELECT 1
+        FROM table_primary_prefix
+        WHERE table_name = in_table_name
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not allowed';
     END IF;
 
     -- ✅ 限制 JSON 大小
@@ -1146,8 +1159,13 @@ BEGIN
     DECLARE CONST_MAX_PK_VALUES_SIZE INT DEFAULT 16384;
     DECLARE CONST_MAX_JSON_DATA_SIZE INT DEFAULT 65536;
 
-		IF in_table_name = "sys_log" THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid table name';
+    -- 仅允许存在主键前缀名的表
+    IF NOT EXISTS (
+        SELECT 1
+        FROM table_primary_prefix
+        WHERE table_name = in_table_name
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not allowed';
     END IF;
 
     -- 参数大小校验
