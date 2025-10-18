@@ -11,7 +11,7 @@
  Target Server Version : 80042
  File Encoding         : 65001
 
- Date: 17/10/2025 12:54:12
+ Date: 18/10/2025 17:14:03
 */
 
 SET NAMES utf8mb4;
@@ -127,6 +127,10 @@ INSERT INTO `knit_cloth` VALUES ('CLTH-250627-0109', 'ORD-250620-1', 'MACH-25061
 INSERT INTO `knit_cloth` VALUES ('CLTH-250706-0001', 'ORD-250620-1', 'MACH-250614-1', 25.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-07-06 17:45:27', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
 INSERT INTO `knit_cloth` VALUES ('CLTH-250710-0004', 'ORD-250620-1', 'MACH-250614-1', 20.00, NULL, NULL, '2025-09-27 15:21:01', 'ADMIN', '2025-07-10 23:57:09', 'USER-250703-0002', NULL, NULL, 'DLVY-250626-0001', '2025-09-27 15:21:01');
 INSERT INTO `knit_cloth` VALUES ('CLTH-250910-0002', 'ORD-250620-1', 'MACH-250614-1', 25.00, NULL, NULL, '2025-09-10 18:47:18', 'ADMIN', '2025-09-10 10:34:13', 'ADMIN', NULL, NULL, 'DLVY-250626-0001', '2025-09-10 17:26:52');
+INSERT INTO `knit_cloth` VALUES ('CLTH-251018-0001', NULL, 'MACH-251018-0001', 20.00, NULL, NULL, NULL, NULL, '2025-10-18 16:53:00', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-251018-0002', NULL, 'MACH-251018-0002', 20.00, NULL, NULL, NULL, NULL, '2025-10-18 16:55:19', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-251018-0003', NULL, 'MACH-251018-0002', 15.00, NULL, NULL, NULL, NULL, '2025-10-18 16:56:20', 'ADMIN', NULL, NULL, NULL, NULL);
+INSERT INTO `knit_cloth` VALUES ('CLTH-251018-0004', 'ORD-250620-2', 'MACH-250616-1', 20.00, NULL, NULL, NULL, NULL, '2025-10-18 16:57:26', 'ADMIN', NULL, NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for knit_cloth_del
@@ -395,6 +399,7 @@ CREATE TABLE `knit_machine`  (
   `add_time` datetime NULL DEFAULT NULL,
   `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `machine_last_input_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`machine_id`) USING BTREE,
   UNIQUE INDEX `uniq_machine_name`(`machine_name`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
@@ -402,8 +407,10 @@ CREATE TABLE `knit_machine`  (
 -- ----------------------------
 -- Records of knit_machine
 -- ----------------------------
-INSERT INTO `knit_machine` VALUES ('MACH-250614-1', '1#', 'ORD-250620-1', NULL, NULL, '2025-06-24 14:04:48', 'ADMIN', '2025-06-14 17:59:07', 'ADMIN', '');
-INSERT INTO `knit_machine` VALUES ('MACH-250616-1', '2#', 'ORD-250620-2', NULL, NULL, '2025-09-10 13:54:01', 'ADMIN', '2025-06-16 18:09:40', 'ADMIN', NULL);
+INSERT INTO `knit_machine` VALUES ('MACH-250614-1', '1#', 'ORD-250620-1', NULL, NULL, '2025-06-24 14:04:48', 'ADMIN', '2025-06-14 17:59:07', 'ADMIN', '', '2025-10-18 16:39:51');
+INSERT INTO `knit_machine` VALUES ('MACH-250616-1', '2#', 'ORD-250620-2', NULL, NULL, '2025-10-18 16:57:26', 'ADMIN', '2025-06-16 18:09:40', 'ADMIN', NULL, '2025-10-18 16:57:26');
+INSERT INTO `knit_machine` VALUES ('MACH-251018-0001', '5#', NULL, NULL, NULL, NULL, NULL, '2025-10-18 11:33:41', 'ADMIN', NULL, '2025-10-18 16:39:51');
+INSERT INTO `knit_machine` VALUES ('MACH-251018-0002', '3#', NULL, NULL, NULL, NULL, NULL, '2025-10-18 11:33:48', 'ADMIN', NULL, '2025-10-18 16:39:51');
 
 -- ----------------------------
 -- Table structure for knit_machine_del
@@ -420,20 +427,21 @@ CREATE TABLE `knit_machine_del`  (
   `add_time` datetime NULL DEFAULT NULL,
   `add_user_id` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `note` varchar(4095) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `machine_last_input_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`machine_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of knit_machine_del
 -- ----------------------------
-INSERT INTO `knit_machine_del` VALUES ('MACH_250619_1', '3#', NULL, '2025-06-19 17:04:48', 'ADMIN', NULL, NULL, '2025-06-19 17:04:41', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_1', '4', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:38', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_2', '5', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:42', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_3', '6', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:46', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_4', '7', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:49', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_5', '8', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:56', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_6', '9', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:59', 'ADMIN', NULL);
-INSERT INTO `knit_machine_del` VALUES ('MACH_250624_7', '10', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:39:03', 'ADMIN', NULL);
+INSERT INTO `knit_machine_del` VALUES ('MACH_250619_1', '3#', NULL, '2025-06-19 17:04:48', 'ADMIN', NULL, NULL, '2025-06-19 17:04:41', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_1', '4', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:38', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_2', '5', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:42', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_3', '6', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:46', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_4', '7', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:49', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_5', '8', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:56', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_6', '9', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:38:59', 'ADMIN', NULL, '2025-10-18 16:39:52');
+INSERT INTO `knit_machine_del` VALUES ('MACH_250624_7', '10', NULL, '2025-06-24 15:39:26', 'ADMIN', NULL, NULL, '2025-06-24 15:39:03', 'ADMIN', NULL, '2025-10-18 16:39:52');
 
 -- ----------------------------
 -- Table structure for knit_order
@@ -568,10 +576,10 @@ CREATE TABLE `serial_code_table`  (
 -- Records of serial_code_table
 -- ----------------------------
 INSERT INTO `serial_code_table` VALUES ('clt', '2025-06-24', 4);
-INSERT INTO `serial_code_table` VALUES ('clth', '2025-09-10', 2);
+INSERT INTO `serial_code_table` VALUES ('clth', '2025-10-18', 4);
 INSERT INTO `serial_code_table` VALUES ('comp', '2025-09-10', 4);
 INSERT INTO `serial_code_table` VALUES ('dlvy', '2025-07-05', 1);
-INSERT INTO `serial_code_table` VALUES ('mach', '2025-06-24', 7);
+INSERT INTO `serial_code_table` VALUES ('mach', '2025-10-18', 2);
 INSERT INTO `serial_code_table` VALUES ('ord', '2025-06-20', 2);
 INSERT INTO `serial_code_table` VALUES ('user', '2025-07-09', 1);
 
@@ -585,11 +593,19 @@ CREATE TABLE `sys_log`  (
   `log_procedure_params` json NULL,
   `log_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 79 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 82 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of sys_log
 -- ----------------------------
+INSERT INTO `sys_log` VALUES (80, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"machine_name\": \"5#\"}, \"in_table_name\": \"knit_machine\"}', '2025-10-18 11:33:41');
+INSERT INTO `sys_log` VALUES (81, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"machine_name\": \"3#\"}, \"in_table_name\": \"knit_machine\"}', '2025-10-18 11:33:48');
+INSERT INTO `sys_log` VALUES (82, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"cloth_order_id\": null, \"cloth_machine_id\": \"MACH-251018-0001\", \"cloth_origin_weight\": \"20.00\", \"cloth_weight_correct\": null}, \"in_table_name\": \"knit_cloth\"}', '2025-10-18 16:53:00');
+INSERT INTO `sys_log` VALUES (83, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"cloth_order_id\": null, \"cloth_machine_id\": \"MACH-251018-0002\", \"cloth_origin_weight\": \"20.00\", \"cloth_weight_correct\": null}, \"in_table_name\": \"knit_cloth\"}', '2025-10-18 16:55:19');
+INSERT INTO `sys_log` VALUES (84, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"cloth_order_id\": null, \"cloth_machine_id\": \"MACH-251018-0002\", \"cloth_origin_weight\": \"15.00\", \"cloth_weight_correct\": null}, \"in_table_name\": \"knit_cloth\"}', '2025-10-18 16:56:20');
+INSERT INTO `sys_log` VALUES (85, 'super_update', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"machine_last_input_time\": 0}, \"in_pk_values\": [null], \"in_table_name\": \"knit_machine\"}', '2025-10-18 16:56:20');
+INSERT INTO `sys_log` VALUES (86, 'super_insert', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"note\": null, \"cloth_order_id\": \"ORD-250620-2\", \"cloth_machine_id\": \"MACH-250616-1\", \"cloth_origin_weight\": \"20.00\", \"cloth_weight_correct\": null}, \"in_table_name\": \"knit_cloth\"}', '2025-10-18 16:57:26');
+INSERT INTO `sys_log` VALUES (87, 'super_update', '{\"in_user_id\": \"ADMIN\", \"in_json_data\": {\"machine_last_input_time\": 0}, \"in_pk_values\": [\"MACH-250616-1\"], \"in_table_name\": \"knit_machine\"}', '2025-10-18 16:57:26');
 
 -- ----------------------------
 -- Table structure for sys_user

@@ -1098,7 +1098,7 @@ def machine_search():
         from knit_machine A
         left join knit_order B on A.machine_order_id = B.order_id
         where machine_name like CONCAT('%%', %s, '%%')
-        ORDER BY LOCATE(%s, machine_name), machine_name
+        ORDER BY LOCATE(%s, machine_name), machine_last_input_time DESC, machine_name
         LIMIT %s
         """
 
