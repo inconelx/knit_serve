@@ -521,7 +521,7 @@ def delivery_cloth_update():
 
         conn = get_db_connection()
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-        sql = f"""SELECT cloth_delivery_id FROM knit_cloth WHERE cloth_id IN ({placeholders})"""
+        sql = f"""SELECT B.delivery_id FROM knit_cloth A LEFT JOIN knit_delivery B ON A.cloth_delivery_id = B.delivery_id WHERE A.cloth_id IN ({placeholders})"""
         cursor.execute(sql, unique_pk_values)
         searched_clothes = cursor.fetchall()
         cursor.close()
@@ -531,9 +531,9 @@ def delivery_cloth_update():
             return jsonify({'error': 'cloth_id not found or incorrect', 'errorType': 1}), 400
 
         for row in searched_clothes:
-            if row['cloth_delivery_id'] is not None and cloth_operate == 'out':
+            if row['delivery_id'] is not None and cloth_operate == 'out':
                 return jsonify({'error': 'delivery cloth has been out', 'errorType': 2}), 400
-            if row['cloth_delivery_id'] != delivery_id and cloth_operate == 'cancel':
+            if row['delivery_id'] != delivery_id and cloth_operate == 'cancel':
                 return jsonify({'error': 'can not cancel other delivery cloth', 'errorType': 3}), 400
 
         if cloth_operate == 'out':
