@@ -330,7 +330,7 @@ def employee_cloth_query_with_pagination():
             'add_time': 'A.add_time',
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         params[:0] = [request.user['user_id']]
 
@@ -347,7 +347,7 @@ def employee_cloth_query_with_pagination():
         left join knit_machine C on A.cloth_machine_id = C.machine_id
         join sys_user E on E.user_id = %s and A.add_user_id = E.user_id
         {where_sql}
-        ORDER BY add_time DESC, cloth_id DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -516,6 +516,9 @@ def delivery_cloth_update():
         if not cloth_operate or not pk_values or not delivery_id:
             return jsonify({'error': 'Missing required parameters', 'errorType': 0}), 400
 
+        if cloth_operate not in {'out', 'cancel'}:
+            return jsonify({'error': 'invalid parameters', 'errorType': 0}), 400
+
         unique_pk_values = list(set(pk_values))
         placeholders = ','.join(['%s'] * len(unique_pk_values))
 
@@ -534,7 +537,8 @@ def delivery_cloth_update():
             if row['delivery_id'] is not None and cloth_operate == 'out':
                 return jsonify({'error': 'delivery cloth has been out', 'errorType': 2}), 400
             if row['delivery_id'] != delivery_id and cloth_operate == 'cancel':
-                return jsonify({'error': 'can not cancel other delivery cloth', 'errorType': 3}), 400
+                return jsonify({'error': 'can not cancel other delivery cloth or inventory cloth', 'errorType': 3}), 400
+            
 
         if cloth_operate == 'out':
             json_str = json.dumps({ 'cloth_delivery_id': delivery_id, 'cloth_delivery_time': 0 }, ensure_ascii=False)
@@ -692,12 +696,14 @@ def normalize_date_range(date_strs):
 def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
     filters = data.get('filters', {})
     fuzzy_fields = data.get('fuzzy_fields', {})
+    order_fields = data.get('order_fields', {})
     date_ranges = data.get('date_ranges', {})
     page = int(data.get('page', 1))
     page_size = int(data.get('page_size', 10))
     offset = (page - 1) * page_size
 
     where_clauses = []
+    order_clauses = []
     params = []
 
     if not page or not page_size:
@@ -726,13 +732,28 @@ def analyze_query_data(allowed_fields, allowed_date_range_fields, data):
                 params.extend([start, end])
 
     where_sql = " AND ".join(where_clauses)
-
     if where_sql:
         where_sql = "WHERE " + where_sql
 
+    for field, value in order_fields.items():
+        if field in allowed_fields:
+            if value is True:
+                order_clauses.append(f"{allowed_fields[field]}")
+            else:
+                order_clauses.append(f"{allowed_fields[field]} DESC")
+        if field in allowed_date_range_fields:
+            if value is True:
+                order_clauses.append(f"{allowed_date_range_fields[field]}")
+            else:
+                order_clauses.append(f"{allowed_date_range_fields[field]} DESC")
+
+    order_sql = ", ".join(order_clauses)
+    if order_sql:
+        order_sql = "ORDER BY " + order_sql
+
     params.extend([page_size, offset])
 
-    return where_sql, params, page, page_size
+    return where_sql, order_sql, params, page, page_size
 
 def execute_query_sql(count_sql, query_sql, params):
     conn = get_db_connection()
@@ -764,14 +785,14 @@ def query_company_with_pagination():
             'add_time': 'add_time'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
         SELECT company_id, company_name, company_type, company_abbreviation, add_time, edit_time, note
         FROM knit_company
         {where_sql}
-        ORDER BY add_time DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -813,7 +834,7 @@ def query_machine_with_pagination():
             'add_time': 'A.add_time'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -821,7 +842,7 @@ def query_machine_with_pagination():
         B.order_no, B.order_cloth_name, B.order_cloth_color
         from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
         {where_sql}
-        ORDER BY add_time DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -831,7 +852,7 @@ def query_machine_with_pagination():
         from knit_machine A left join knit_order B on A.machine_order_id = B.order_id
         {where_sql}
         """
-
+        
         total, rows = execute_query_sql(count_sql, query_sql, params)
 
         return jsonify({
@@ -864,7 +885,7 @@ def query_order_with_pagination():
             'add_time': 'A.add_time'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -874,7 +895,7 @@ def query_order_with_pagination():
         B.company_name, B.company_abbreviation
         from knit_order A left join knit_company B on A.order_custom_company_id = B.company_id
         {where_sql}
-        ORDER BY add_time DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -921,7 +942,7 @@ def query_cloth_with_pagination():
             'delivery_time': 'IF(D.delivery_no IS NULL, NULL, A.cloth_delivery_time)'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -940,7 +961,7 @@ def query_cloth_with_pagination():
         left join knit_delivery D on A.cloth_delivery_id = D.delivery_id
         left join sys_user E on A.add_user_id = E.user_id
         {where_sql}
-        ORDER BY add_time DESC, cloth_id DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -988,7 +1009,7 @@ def query_delivery_with_pagination():
             'add_time': 'A.add_time'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -1006,7 +1027,7 @@ def query_delivery_with_pagination():
         GROUP BY AA.cloth_delivery_id
         ) C on A.delivery_id = C.cloth_delivery_id
         {where_sql}
-        ORDER BY add_time DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
@@ -1049,7 +1070,7 @@ def query_user_with_pagination():
             'add_time': 'add_time'
         }
 
-        where_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
+        where_sql, order_sql, params, page, page_size = analyze_query_data(allowed_fields, allowed_date_range_fields, data)
 
         # 查询数据
         query_sql = f"""
@@ -1057,7 +1078,7 @@ def query_user_with_pagination():
         (1 - print_allowed) * (1 - is_admin) AS print_status, add_time, edit_time, note
         FROM sys_user
         {where_sql}
-        ORDER BY add_time DESC
+        {order_sql}
         LIMIT %s OFFSET %s
         """
 
